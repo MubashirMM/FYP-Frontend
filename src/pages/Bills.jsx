@@ -1,0 +1,577 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
+
+const API = import.meta.env.VITE_API_URL;
+
+function Bills() {
+  const [bills, setBills] = useState([]);
+  const [filteredBills, setFilteredBills] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const [selectedBill, setSelectedBill] = useState(null);
+  const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
+  const [user, setUser] = useState(null);
+  const [sortBy, setSortBy] = useState("date");
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  const getAuthHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get(`${API}/auth/me`, getAuthHeader());
+      setUser(res.data);
+    } catch (err) {
+      console.error("Failed to fetch user", err);
+    }
+  };
+
+  const fetchBills = async (status = null) => {
+    setLoading(true);
+    try {
+      const params = status && status !== "all" ? { status } : {};
+      const res = await axios.get(`${API}/bills`, { params, ...getAuthHeader() });
+      const data = res.data.map(b => ({
+        ...b,
+        customer_name: b.customer_name || "نقد"
+      }));
+      setBills(data);
+      applyFiltersAndSort(data, statusFilter, search, sortBy, sortOrder);
+    } catch (err) {
+      showMsg(err.response?.data?.detail || "بلز لوڈ کرنے میں خرابی", "error");
+    } finally { setLoading(false); }
+  };
+
+  const fetchShopInfo = async () => {
+    try {
+      const res = await axios.get(`${API}/shops`, getAuthHeader());
+      if (res.data?.length > 0) setShopInfo(res.data[0]);
+    } catch {}
+  };
+
+  const payBill = async (customerName) => {
+    if (!customerName || customerName === "نقد") return showMsg("نقد بل ادا نہیں کیا جا سکتا", "error");
+    try {
+      await axios.put(`${API}/bills/pay/${customerName}`, {}, getAuthHeader());
+      showMsg("بل کامیابی سے ادا کر دیا گیا", "success");
+      fetchBills(statusFilter === "all" ? null : statusFilter);
+      setSelectedBill(null);
+    } catch (err) {
+      showMsg(err.response?.data?.detail || "ادائیگی ناکام", "error");
+    }
+  };
+
+  const showMsg = (text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: "", type: "" }), 3000);
+  };
+
+  const downloadBill = (bill) => {
+    try {
+      // Create HTML content for the bill
+      const htmlContent = `<!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <title>بل نمبر ${bill.bill_id}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Arial', 'Tahoma', sans-serif;
+            padding: 50px;
+            line-height: 1.8;
+            background: #fff;
+            color: #333;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 20px;
+          }
+          .shop-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 10px;
+          }
+          .shop-address {
+            color: #666;
+            font-size: 14px;
+          }
+          .bill-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            flex-wrap: wrap;
+            gap: 15px;
+          }
+          .info-group {
+            text-align: center;
+            flex: 1;
+          }
+          .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+          }
+          .info-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+          }
+          .items-table {
+            width: 100%;
+            margin: 30px 0;
+            border-collapse: collapse;
+          }
+          .items-table th,
+          .items-table td {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            text-align: right;
+          }
+          .items-table th {
+            background: #f3f4f6;
+            font-weight: bold;
+          }
+          .total-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 12px;
+          }
+          .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 16px;
+          }
+          .grand-total {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #ddd;
+          }
+          .status {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+          }
+          .status-paid {
+            background: #d1fae5;
+            color: #065f46;
+          }
+          .status-unpaid {
+            background: #fee2e2;
+            color: #991b1b;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #999;
+            font-size: 12px;
+          }
+          @media print {
+            body { padding: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="shop-name">${shopInfo.shop_name || "میرا اسٹور"}</div>
+          <div class="shop-address">${shopInfo.address || ""}</div>
+          <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
+        </div>
+
+        <div class="bill-info">
+          <div class="info-group">
+            <div class="info-label">بل نمبر</div>
+            <div class="info-value">#${bill.bill_id}</div>
+          </div>
+          <div class="info-group">
+            <div class="info-label">کسٹمر</div>
+            <div class="info-value">${bill.customer_name}</div>
+          </div>
+          <div class="info-group">
+            <div class="info-label">تاریخ</div>
+            <div class="info-value">${bill.bill_day_name}، ${bill.bill_day} ${bill.bill_month} ${bill.bill_year}</div>
+          </div>
+          <div class="info-group">
+            <div class="info-label">وقت</div>
+            <div class="info-value">${bill.bill_time}</div>
+          </div>
+        </div>
+
+        ${bill.status === "paid" ? `
+        <div class="bill-info" style="background: #d1fae5;">
+          <div class="info-group">
+            <div class="info-label">ادا شدہ تاریخ</div>
+            <div class="info-value">${bill.bill_day_name}، ${bill.bill_day} ${bill.bill_month} ${bill.bill_year}</div>
+          </div>
+        </div>
+        ` : ''}
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>آئٹم</th>
+              <th>مقدار</th>
+              <th>فی اکائی</th>
+              <th>کل</th>
+              </tr>
+          </thead>
+          <tbody>
+            ${bill.items?.map(item => `
+              <tr>
+                <td>${item.item_name}</td>
+                <td>${item.quantity} ${item.requested_unit}</td>
+                <td>${item.unit_price}</td>
+                <td>${item.total_amount}</td>
+              </tr>
+            `).join('') || '<tr><td colspan="4">کوئی آئٹم نہیں</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="total-section">
+          <div class="total-row">
+            <span>سب ٹوٹل:</span>
+            <span>${bill.udhar_items_total || 0} روپے</span>
+          </div>
+          <div class="total-row">
+            <span>براہ راست جمع:</span>
+            <span class="text-green-600">+ ${bill.direct_addition || 0} روپے</span>
+          </div>
+          <div class="total-row">
+            <span>براہ راست کٹوتی:</span>
+            <span class="text-red-600">- ${bill.direct_deduction || 0} روپے</span>
+          </div>
+          <div class="grand-total">
+            <span>کل رقم:</span>
+            <span>${bill.effective_total || 0} روپے</span>
+          </div>
+          <div class="total-row" style="margin-top: 15px;">
+            <span>اسٹیٹس:</span>
+            <span class="status ${bill.status === 'paid' ? 'status-paid' : 'status-unpaid'}">
+              ${bill.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}
+            </span>
+          </div>
+        </div>
+
+        <div class="footer">
+          شکریہ! آپ کا اعتبار ہماری ترجیح ہے۔
+        </div>
+      </body>
+      </html>`;
+
+      // Create blob and trigger download
+      const blob = new Blob([htmlContent], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = `Bill_${bill.customer_name}_${bill.bill_id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      showMsg("بل ڈاؤن لوڈ ہو رہا ہے...", "success");
+    } catch (error) {
+      console.error("Download error:", error);
+      showMsg("ڈاؤن لوڈ میں خرابی: " + error.message, "error");
+    }
+  };
+
+  const printBill = (bill) => {
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <html dir="rtl"><head><title>بل</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:40px;line-height:1.6}
+        .header{text-align:center;margin-bottom:30px}
+        table{width:100%;border-collapse:collapse;margin:20px 0}
+        th,td{border:1px solid #ccc;padding:10px;text-align:right}
+        .total{font-size:1.6em;font-weight:bold;text-align:right;margin-top:30px}
+      </style>
+      </head><body>
+        <div class="header">
+          <h1>${shopInfo.shop_name}</h1>
+          <p>${shopInfo.address || ""}</p>
+          <p>مالک: ${shopInfo.owner_name}</p>
+        </div>
+        <hr>
+        <p><strong>کسٹمر:</strong> ${bill.customer_name}</p>
+        <p><strong>بل نمبر:</strong> ${bill.bill_id}</p>
+        <p><strong>تاریخ:</strong> ${bill.bill_day_name}، ${bill.bill_day} ${bill.bill_month} ${bill.bill_year} • ${bill.bill_time}</p>
+        ${bill.status === "paid" ? `<p><strong>ادا شدہ تاریخ:</strong> ${bill.bill_day_name}، ${bill.bill_day} ${bill.bill_month} ${bill.bill_year}</p>` : ''}
+        <table>
+          <thead> <tr><th>آئٹم</th><th>مقدار</th><th>فی اکائی</th><th>کل</th></tr> </thead>
+          <tbody>
+            ${bill.items?.map(item => `
+              <tr><td>${item.item_name}</td><td>${item.quantity} ${item.requested_unit}</td><td>${item.unit_price}</td><td>${item.total_amount}</td></tr>
+            `).join('') || '<tr><td colspan="4">کوئی آئٹم نہیں</td></tr>'}
+          </tbody>
+        </table>
+        <p><strong>سب ٹوٹل:</strong> ${bill.udhar_items_total}</p>
+        <p><strong>براہ راست جمع:</strong> ${bill.direct_addition}</p>
+        <p><strong>براہ راست کٹوتی:</strong> ${bill.direct_deduction}</p>
+        <div class="total">کل رقم: ${bill.effective_total} روپے</div>
+        <p style="text-align:center;margin-top:60px">شکریہ!</p>
+      </body></html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  };
+
+  useEffect(() => {
+    fetchBills();
+    fetchShopInfo();
+    fetchUser();
+  }, []);
+
+  const applyFiltersAndSort = (data, filter, searchTerm, sortField, order) => {
+    let filtered = [...data];
+    
+    if (filter !== "all") {
+      filtered = filtered.filter(b => b.status === filter);
+    }
+    
+    if (searchTerm) {
+      filtered = filtered.filter(b => 
+        (b.customer_name || "").toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+      if (sortField === "customer") {
+        aVal = a.customer_name;
+        bVal = b.customer_name;
+      } else if (sortField === "total") {
+        aVal = a.effective_total;
+        bVal = b.effective_total;
+      } else if (sortField === "date") {
+        aVal = `${a.bill_year}-${a.bill_month}-${a.bill_day}`;
+        bVal = `${b.bill_year}-${b.bill_month}-${b.bill_day}`;
+      } else {
+        aVal = a[sortField];
+        bVal = b[sortField];
+      }
+      
+      if (order === "asc") {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+    
+    setFilteredBills(filtered);
+  };
+
+  const handleFilter = (filter) => {
+    setStatusFilter(filter);
+    applyFiltersAndSort(bills, filter, search, sortBy, sortOrder);
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    applyFiltersAndSort(bills, statusFilter, search, sortBy, sortOrder);
+  };
+
+  const handleSort = (field) => {
+    const newOrder = sortBy === field && sortOrder === "asc" ? "desc" : "asc";
+    setSortBy(field);
+    setSortOrder(newOrder);
+    applyFiltersAndSort(bills, statusFilter, search, field, newOrder);
+  };
+
+  const getEmptyMessage = () => {
+    if (search) return `"${search}" کے نام سے کوئی بل نہیں ملا`;
+    if (statusFilter === "paid") return "کوئی ادا شدہ بل موجود نہیں ہے";
+    if (statusFilter === "unpaid") return "کوئی غیر ادا شدہ بل موجود نہیں ہے";
+    return "کوئی بل موجود نہیں ہے";
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-3 md:p-6" dir="rtl">
+      {message.text && (
+        <div className={`fixed top-6 left-6 z-[300] px-6 py-3 rounded-2xl shadow-2xl ${message.type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white`}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="bg-white p-5 rounded-t-3xl shadow-sm border-b">
+        <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-2xl font-black">بلز کی فہرست</h2>
+            <p className="text-gray-500">کل بلز: {bills.length}</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => handleSort("customer")} className={`px-4 py-2 rounded-2xl font-bold text-sm ${sortBy === "customer" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>
+              نام {sortBy === "customer" && (sortOrder === "asc" ? "↑" : "↓")}
+            </button>
+            <button onClick={() => handleSort("total")} className={`px-4 py-2 rounded-2xl font-bold text-sm ${sortBy === "total" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>
+              رقم {sortBy === "total" && (sortOrder === "asc" ? "↑" : "↓")}
+            </button>
+            <button onClick={() => handleSort("date")} className={`px-4 py-2 rounded-2xl font-bold text-sm ${sortBy === "date" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>
+              تاریخ {sortBy === "date" && (sortOrder === "asc" ? "↑" : "↓")}
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <form onSubmit={handleSearch} className="flex-1">
+            <input type="text" placeholder="کسٹمر نام سے تلاش کریں..." value={search} onChange={e => setSearch(e.target.value)} className="w-full p-4 border-2 border-gray-200 rounded-3xl focus:border-blue-500 outline-none" />
+          </form>
+          <div className="flex gap-2">
+            <button onClick={() => handleFilter("all")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "all" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>سب</button>
+            <button onClick={() => handleFilter("unpaid")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "unpaid" ? "bg-rose-600 text-white" : "bg-gray-100"}`}>غیر ادا شدہ</button>
+            <button onClick={() => handleFilter("paid")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "paid" ? "bg-emerald-600 text-white" : "bg-gray-100"}`}>ادا شدہ</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white shadow-xl rounded-b-3xl overflow-hidden border overflow-x-auto">
+        <table className="w-full min-w-[1200px] text-right">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-5 border-l font-bold cursor-pointer hover:bg-gray-200" onClick={() => handleSort("customer")}>کسٹمر {sortBy === "customer" && (sortOrder === "asc" ? "↑" : "↓")}</th>
+              <th className="p-5 border-l font-bold text-center">بل نمبر</th>
+              <th className="p-5 border-l font-bold text-center">دن</th>
+              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("date")}>تاریخ {sortBy === "date" && (sortOrder === "asc" ? "↑" : "↓")}</th>
+              <th className="p-5 border-l font-bold text-center">وقت</th>
+              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("total")}>کل رقم {sortBy === "total" && (sortOrder === "asc" ? "↑" : "↓")}</th>
+              <th className="p-5 border-l font-bold text-center">اسٹیٹس</th>
+              <th className="p-5 text-center font-bold">عمل</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? 
+              <tr><td colSpan="8" className="p-20 text-center text-gray-400">لوڈ ہو رہا ہے...</td></tr> 
+              : filteredBills.length > 0 ? 
+                filteredBills.map(bill => (
+                  <tr key={bill.bill_id} className="border-b hover:bg-gray-50 transition-colors">
+                    <td className="p-5 border-l font-bold">{bill.customer_name}</td>
+                    <td className="p-5 border-l text-center font-mono">#{bill.bill_id}</td>
+                    <td className="p-5 border-l text-center">{bill.bill_day_name}</td>
+                    <td className="p-5 border-l text-center">{bill.bill_day} {bill.bill_month} {bill.bill_year}</td>
+                    <td className="p-5 border-l text-center">{bill.bill_time}</td>
+                    <td className="p-5 border-l text-center font-bold text-lg">{bill.effective_total}</td>
+                    <td className="p-5 border-l text-center">
+                      <span className={`px-5 py-1 rounded-full text-sm ${bill.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {bill.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}
+                      </span>
+                    </td>
+                    <td className="p-5 text-center">
+                      <div className="flex gap-2 justify-center">
+                        <button onClick={() => setSelectedBill(bill)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-2xl font-medium text-sm transition-all hover:scale-105">
+                          👁️ دیکھیں
+                        </button>
+                        <button onClick={() => downloadBill(bill)} className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-2xl font-medium text-sm transition-all hover:scale-105">
+                          📥 ڈاؤن لوڈ
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              : (
+                <tr>
+                  <td colSpan="8" className="p-20 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">📋</div>
+                      <p className="text-gray-500 text-lg font-medium">{getEmptyMessage()}</p>
+                      {(search || statusFilter !== "all") && (
+                        <button onClick={() => { setSearch(""); setStatusFilter("all"); applyFiltersAndSort(bills, "all", "", sortBy, sortOrder); }} className="text-blue-600 hover:text-blue-700 font-bold underline">
+                          تمام بل دیکھیں
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            }
+          </tbody>
+        </table>
+      </div>
+
+      {/* Bill Preview Modal */}
+      {selectedBill && (
+        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-auto p-8">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-black">{shopInfo.shop_name || "میرا اسٹور"}</h1>
+              <p className="text-gray-600">{shopInfo.address}</p>
+              <p className="text-sm text-gray-500">مالک: {shopInfo.owner_name || user?.username}</p>
+            </div>
+
+            <div className="flex justify-between text-lg mb-6 p-4 bg-gray-50 rounded-2xl flex-wrap gap-3">
+              <div><strong>کسٹمر:</strong> {selectedBill.customer_name}</div>
+              <div><strong>بل نمبر:</strong> #{selectedBill.bill_id}</div>
+              <div>{selectedBill.bill_day_name} • {selectedBill.bill_day} {selectedBill.bill_month} {selectedBill.bill_year} • {selectedBill.bill_time}</div>
+            </div>
+
+            {selectedBill.status === "paid" && (
+              <div className="bg-emerald-50 p-4 rounded-2xl mb-6 text-center">
+                <p className="text-emerald-700 font-bold">✅ ادا شدہ تاریخ: {selectedBill.bill_day_name}، {selectedBill.bill_day} {selectedBill.bill_month} {selectedBill.bill_year}</p>
+              </div>
+            )}
+
+            <div className="border rounded-2xl overflow-hidden mb-8">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr><th className="p-4 text-right">آئٹم</th><th className="p-4 text-center">مقدار</th><th className="p-4 text-center">فی اکائی</th><th className="p-4 text-right">کل</th></tr>
+                </thead>
+                <tbody>
+                  {selectedBill.items?.map((item, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-4">{item.item_name}</td>
+                      <td className="p-4 text-center">{item.quantity} {item.requested_unit}</td>
+                      <td className="p-4 text-center">{item.unit_price}</td>
+                      <td className="p-4 text-right font-bold">{item.total_amount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 text-lg mb-10 p-6 bg-gray-50 rounded-2xl">
+              <div>سب ٹوٹل: <strong>{selectedBill.udhar_items_total}</strong></div>
+              <div>براہ راست جمع: <strong className="text-green-600">{selectedBill.direct_addition}</strong></div>
+              <div>براہ راست کٹوتی: <strong className="text-red-600">{selectedBill.direct_deduction}</strong></div>
+              <div className="text-2xl font-black text-right">کل رقم: {selectedBill.effective_total} روپے</div>
+            </div>
+
+            <div className="flex gap-4">
+              <button onClick={() => downloadBill(selectedBill)} className="flex-1 bg-gray-800 hover:bg-gray-900 text-white py-5 rounded-3xl font-bold text-lg transition-all hover:scale-105">
+                📥 ڈاؤن لوڈ بل
+              </button>
+              <button onClick={() => printBill(selectedBill)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-3xl font-bold text-lg transition-all hover:scale-105">
+                🖨️ پرنٹ بل
+              </button>
+              {selectedBill.status === "unpaid" && selectedBill.customer_name !== "نقد" ? (
+                <button onClick={() => payBill(selectedBill.customer_name)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-3xl font-bold text-lg transition-all hover:scale-105">
+                  💰 ابھی ادا کریں
+                </button>
+              ) : (
+                <button disabled className="flex-1 bg-gray-300 text-gray-500 py-5 rounded-3xl font-bold text-lg cursor-not-allowed">✅ ادا شدہ</button>
+              )}
+              <button onClick={() => setSelectedBill(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 py-5 rounded-3xl font-bold text-lg transition-all">❌ بند کریں</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Bills;

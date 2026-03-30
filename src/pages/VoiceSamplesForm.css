@@ -1,0 +1,84 @@
+.form-container {
+  max-width: 750px;   /* wider overall */
+  margin: 10px auto;
+  padding: 0.3rem;
+  text-align: center;
+}
+
+.voice-box {
+  border: 1px solid #ccc;
+  padding: 0.25rem;   /* smaller padding */
+  margin-bottom: 0.4rem;
+  border-radius: 4px;
+}
+
+.voice-box p {
+  margin-bottom: 0.2rem;
+  font-family: 'Noto Nastaliq Urdu', serif;
+  font-size: 0.8rem;  /* smaller text */
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem; /* smaller controls */
+}
+
+.link {
+  color: #0077ff;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.link:hover {
+  text-decoration: underline;
+  color: #aa3bff;
+}
+
+input[type="file"] {
+  font-size: 0.7rem;
+  max-width: 160px;   /* narrower file input */
+}
+
+audio {
+  width: 100%;
+  margin-top: 0.2rem;
+  height: 22px;       /* slim playback bar */
+}
+
+.submit-btn {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.35rem;
+  border: 1px solid #08060d;
+  background: #fff;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+.submit-btn:hover {
+  background: rgba(214, 191, 232, 0.1);
+  border-color: #aa3bff;
+  color: #aa3bff;
+}
+
+.cancel-link {
+  margin-top: 0.3rem;
+  display: inline-block;
+  color: #aa3bff;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.cancel-link:hover {
+  text-decoration: underline;
+}
+
+.error {
+  color: #d9534f;
+  margin-bottom: 0.3rem;
+  font-size: 0.75rem;
+}
