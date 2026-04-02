@@ -21,7 +21,7 @@ function BillItemHistory() {
       setItems(data);
       setFilteredItems(data);
     } catch (err) {
-      showMsg(err.response?.data?.detail || "آئٹمز حاصل نہیں ہو سکے", "error");
+      // showMsg(err.response?.data?.detail || "آئٹمز حاصل نہیں ہو سکے", "error");
     } finally {
       setLoading(false);
     }

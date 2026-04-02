@@ -17,31 +17,54 @@ const urduSentences = [
 function VoiceSamplesForm() {
   const location = useLocation();
   const navigate = useNavigate();
+  const API = import.meta.env.VITE_API_URL;
 
   const [email, setEmail] = useState(location.state?.email || "");
   const [sentences, setSentences] = useState([]);
   const [samples, setSamples] = useState({ 1: null, 2: null, 3: null });
-
+  const [recordingStatus, setRecordingStatus] = useState({ 1: false, 2: false, 3: false });
   const [messages, setMessages] = useState({});
   const [error, setError] = useState("");
   const [globalMessage, setGlobalMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     const shuffled = [...urduSentences].sort(() => 0.5 - Math.random());
     setSentences(shuffled.slice(0, 3));
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   // ======================
-  // RECORD START
+  // TOGGLE RECORDING
   // ======================
+  async function toggleRecording(slot) {
+    if (recordingStatus[slot]) {
+      // Stop recording
+      stopRecording(slot);
+    } else {
+      // Start recording
+      await startRecording(slot);
+    }
+  }
+
   async function startRecording(slot) {
     try {
       setError("");
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
 
       mediaRecorderRef.current = new MediaRecorder(stream);
       chunksRef.current = [];
@@ -50,11 +73,42 @@ function VoiceSamplesForm() {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
+      mediaRecorderRef.current.onstop = async () => {
+        try {
+          const blob = new Blob(chunksRef.current);
+          const wavBlob = await convertToWav(blob);
+          const base64 = await blobToBase64(wavBlob);
+
+          setSamples((prev) => ({ ...prev, [slot]: base64 }));
+
+          const audioEl = document.getElementById(`audio${slot}`);
+          if (audioEl) audioEl.src = URL.createObjectURL(wavBlob);
+
+          setMessages((prev) => ({
+            ...prev,
+            [slot]: "✅ ریکارڈ محفوظ ہو گیا"
+          }));
+
+          setRecordingStatus((prev) => ({ ...prev, [slot]: false }));
+
+          // Stop all tracks
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+          }
+
+        } catch (err) {
+          console.error(err);
+          setError("ریکارڈ محفوظ کرنے میں خرابی ہوئی");
+          setRecordingStatus((prev) => ({ ...prev, [slot]: false }));
+        }
+      };
+
       mediaRecorderRef.current.start();
 
+      setRecordingStatus((prev) => ({ ...prev, [slot]: true }));
       setMessages((prev) => ({
         ...prev,
-        [slot]: "🎙️ ریکارڈنگ شروع ہو گئی"
+        [slot]: "🔴 ریکارڈنگ جاری ہے..."
       }));
 
     } catch {
@@ -62,51 +116,30 @@ function VoiceSamplesForm() {
     }
   }
 
-  // ======================
-  // RECORD STOP
-  // ======================
   function stopRecording(slot) {
-    if (!mediaRecorderRef.current) return;
-
-    mediaRecorderRef.current.stop();
-
-    mediaRecorderRef.current.onstop = async () => {
-      try {
-        const blob = new Blob(chunksRef.current);
-
-        // 🔥 convert ANY format → WAV
-        const wavBlob = await convertToWav(blob);
-
-        const base64 = await blobToBase64(wavBlob);
-
-        setSamples((prev) => ({ ...prev, [slot]: base64 }));
-
-        const audioEl = document.getElementById(`audio${slot}`);
-        if (audioEl) audioEl.src = URL.createObjectURL(wavBlob);
-
-        setMessages((prev) => ({
-          ...prev,
-          [slot]: "✅ ریکارڈ محفوظ ہو گیا"
-        }));
-
-      } catch (err) {
-        console.error(err);
-        setError("ریکارڈ محفوظ کرنے میں خرابی ہوئی");
-      }
-    };
+    if (mediaRecorderRef.current && recordingStatus[slot]) {
+      mediaRecorderRef.current.stop();
+      setMessages((prev) => ({
+        ...prev,
+        [slot]: "⏹️ ریکارڈنگ بند کر رہے ہیں..."
+      }));
+    }
   }
 
   // ======================
-  // FILE UPLOAD (ANY FORMAT)
+  // FILE UPLOAD
   // ======================
   async function uploadFile(e, slot) {
     try {
       const file = e.target.files[0];
       if (!file) return;
 
-      // 🔥 convert ANY format → WAV
-      const wavBlob = await convertToWav(file);
+      setMessages((prev) => ({
+        ...prev,
+        [slot]: "📁 فائل پروسیس ہو رہی ہے..."
+      }));
 
+      const wavBlob = await convertToWav(file);
       const base64 = await blobToBase64(wavBlob);
 
       setSamples((prev) => ({ ...prev, [slot]: base64 }));
@@ -116,8 +149,12 @@ function VoiceSamplesForm() {
 
       setMessages((prev) => ({
         ...prev,
-        [slot]: "📁 فائل شامل ہو گئی"
+        [slot]: "✅ فائل شامل ہو گئی"
       }));
+
+      setTimeout(() => {
+        setMessages((prev) => ({ ...prev, [slot]: "" }));
+      }, 3000);
 
     } catch (err) {
       console.error(err);
@@ -126,7 +163,7 @@ function VoiceSamplesForm() {
   }
 
   // ======================
-  // CONVERT TO WAV (KEY FIX)
+  // CONVERT TO WAV
   // ======================
   async function convertToWav(blob) {
     const audioContext = new AudioContext();
@@ -185,7 +222,7 @@ function VoiceSamplesForm() {
   }
 
   // ======================
-  // SEND
+  // SEND SAMPLES
   // ======================
   async function sendSamples() {
     setError("");
@@ -201,8 +238,10 @@ function VoiceSamplesForm() {
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/save-voice-samples", {
+      const res = await fetch(`${API}/auth/save-voice-samples`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -218,14 +257,20 @@ function VoiceSamplesForm() {
           ? data.detail.map(e => e.msg).join(", ")
           : data.detail || "خرابی ہوئی"
         );
+        setIsLoading(false);
         return;
       }
 
-      setGlobalMessage("✅ وائس سیمپلز محفوظ ہو گئے");
-      setTimeout(() => navigate("/login"), 2000);
+      setGlobalMessage("✅ وائس سیمپلز کامیابی سے محفوظ ہو گئے!");
+      
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
 
     } catch {
       setError("سرور سے رابطہ نہیں ہو سکا");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -233,89 +278,170 @@ function VoiceSamplesForm() {
   // UI
   // ======================
   return (
-    <div className="max-w-2xl mx-auto p-3">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-6">
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6 font-urdu">
+            🎤 وائس نمونے شامل کریں
+          </h2>
 
-      <h2 className="text-center text-lg font-semibold mb-3">
-        🎤 وائس شامل کریں
-      </h2>
-
-      <input
-        type="email"
-        placeholder="ای میل درج کریں"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full border p-2 mb-2 rounded"
-      />
-
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      {globalMessage && <p className="text-green-600 text-sm">{globalMessage}</p>}
-
-      {sentences.map((sentence, index) => {
-        const slot = index + 1;
-
-        return (
-          <div key={slot} className="border p-2 mb-3 rounded">
-
-            {/* MESSAGE ABOVE */}
-            {messages[slot] && (
-              <p className="text-green-600 text-xs mb-1">
-                {messages[slot]}
-              </p>
-            )}
-
-            <p className="text-sm mb-2 text-center">{sentence}</p>
-
-            <div className="grid grid-cols-2 gap-3">
-
-              {/* LEFT */}
-              <div className="flex flex-col gap-2">
-                <input
-                  type="file"
-                  accept="audio/*"
-                  onChange={(e) => uploadFile(e, slot)}
-                  className="text-xs"
-                />
-                <audio id={`audio${slot}`} controls className="w-full h-7" />
-              </div>
-
-              {/* RIGHT */}
-              <div className="flex flex-col justify-center gap-2 items-center">
-                <button
-                  type="button"
-                  onClick={() => startRecording(slot)}
-                  className="text-blue-500 text-sm"
-                >
-                  🎙️ شروع
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => stopRecording(slot)}
-                  className="text-purple-500 text-sm"
-                >
-                  ⏹️ ختم
-                </button>
-              </div>
-
-            </div>
+          {/* Email Input */}
+          <div className="mb-6">
+            <label className="block text-gray-700 font-urdu mb-2 text-right">
+              ای میل
+            </label>
+            <input
+              type="email"
+              placeholder="example@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-urdu focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+            />
           </div>
-        );
-      })}
 
-      <button
-        type="button"
-        onClick={sendSamples}
-        className="w-full border p-2 rounded mt-2"
-      >
-        محفوظ کریں
-      </button>
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-right">
+              ❌ {error}
+            </div>
+          )}
 
-      <p
-        onClick={() => navigate("/login")}
-        className="text-center text-purple-500 mt-2 cursor-pointer"
-      >
-        کینسل کریں
-      </p>
+          {/* Success Message */}
+          {globalMessage && (
+            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-right animate-pulse">
+              ✅ {globalMessage}
+              <p className="text-sm mt-1">لاگ ان پیج پر جا رہے ہیں...</p>
+            </div>
+          )}
+
+          {/* Sentences Cards */}
+          {sentences.map((sentence, index) => {
+            const slot = index + 1;
+            const isRecording = recordingStatus[slot];
+            const hasSample = samples[slot];
+
+            return (
+              <div key={slot} className="mb-6 border-2 border-gray-200 rounded-xl p-4 hover:border-purple-300 transition-all">
+                {/* Status Message */}
+                {messages[slot] && (
+                  <div className={`mb-3 p-2 rounded-lg text-center text-sm font-urdu ${
+                    messages[slot].includes("✅") 
+                      ? "bg-green-100 text-green-700" 
+                      : messages[slot].includes("🔴")
+                      ? "bg-red-100 text-red-700 animate-pulse"
+                      : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {messages[slot]}
+                  </div>
+                )}
+
+                {/* Sentence */}
+                <p className="text-lg font-urdu text-gray-800 mb-4 text-center bg-gray-50 p-3 rounded-lg">
+                  {sentence}
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Left Column - File Upload & Audio */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-gray-600 font-urdu text-sm mb-2 text-right">
+                        فائل اپ لوڈ کریں
+                      </label>
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={(e) => uploadFile(e, slot)}
+                        className="w-full text-sm text-gray-500 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-600 font-urdu text-sm mb-2 text-right">
+                        سنیں
+                      </label>
+                      <audio id={`audio${slot}`} controls className="w-full h-10 rounded-lg">
+                        <source src="" type="audio/wav" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  </div>
+
+                  {/* Right Column - Recording Button */}
+                  <div className="flex flex-col items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => toggleRecording(slot)}
+                      className={`relative w-32 h-32 rounded-full transition-all transform hover:scale-105 focus:outline-none focus:ring-4 ${
+                        isRecording
+                          ? "bg-red-500 shadow-lg shadow-red-300 animate-pulse"
+                          : hasSample
+                          ? "bg-green-500 shadow-lg shadow-green-300"
+                          : "bg-purple-500 shadow-lg shadow-purple-300"
+                      }`}
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {isRecording ? (
+                          <>
+                            <div className="w-8 h-8 bg-white rounded-sm animate-pulse"></div>
+                            <div className="absolute w-16 h-16 bg-red-400 rounded-full animate-ping opacity-75"></div>
+                          </>
+                        ) : hasSample ? (
+                          <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                    <p className="mt-3 text-sm font-urdu text-gray-600">
+                      {isRecording 
+                        ? "🔴 ریکارڈنگ... دبائیں بند کرنے کے لیے" 
+                        : hasSample 
+                        ? "✅ ریکارڈ محفوظ ہے" 
+                        : "🎙️ ریکارڈنگ شروع کریں"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress Indicator */}
+                {hasSample && (
+                  <div className="mt-3 w-full bg-gray-200 rounded-full h-1">
+                    <div className="bg-green-500 h-1 rounded-full w-full"></div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Submit Button */}
+          <button
+            type="button"
+            onClick={sendSamples}
+            disabled={isLoading}
+            className="w-full bg-purple-600 text-white py-3 rounded-lg font-urdu text-lg font-semibold hover:bg-purple-700 transition-colors disabled:bg-purple-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>محفوظ ہو رہا ہے...</span>
+              </>
+            ) : (
+              "✅ وائس نمونے محفوظ کریں"
+            )}
+          </button>
+
+          {/* Cancel Button */}
+          <button
+            onClick={() => navigate("/login")}
+            className="w-full mt-3 text-gray-600 hover:text-purple-600 font-urdu py-2 transition-colors"
+          >
+            منسوخ کریں
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
