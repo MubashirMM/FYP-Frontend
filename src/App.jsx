@@ -21,6 +21,7 @@ import BillItems from "./pages/BillItems";
 import Profile from "./pages/Profile";
 import Sales from "./pages/Sales";
 import BillItemHistory from "./pages/BillItemHistory";
+import SalesReport from "./pages/SalesReport";
 
 function App() {
   return (
@@ -53,6 +54,8 @@ function App() {
           <Route path="/bill-items" element={<BillItems />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/bill-item-history" element={<BillItemHistory />} />
+          <Route path="/sales-report" element={<SalesReport />} />
+
         </Route>
 
         {/* 404 Fallback */}

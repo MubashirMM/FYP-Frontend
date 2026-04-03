@@ -149,6 +149,14 @@ function MainLayout() {
             onClick={closeSidebar}
             isActive={location.pathname === "/shop"}
           />
+          <SidebarItem 
+            to="/sales-report" 
+            icon="🛒" 
+            label="فروخت رپورٹ"
+            isOpen={isOpen} 
+            onClick={closeSidebar}
+            isActive={location.pathname === "/sales-report"}
+          />
 
           <div className="mt-auto border-t border-gray-700 pt-4 mt-6">
             <SidebarItem 
