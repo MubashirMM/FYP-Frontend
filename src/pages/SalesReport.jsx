@@ -1,11 +1,5 @@
-
-
-
-
-
 import { useState, useEffect } from "react";
 import axios from "axios";
-import html2pdf from 'html2pdf.js';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -13,12 +7,11 @@ function SalesReport({ onClose }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [printGenerating, setPrintGenerating] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
   
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -61,7 +54,7 @@ function SalesReport({ onClose }) {
   const generateReport = async () => {
     setGenerating(true);
     try {
-      const response = await axios.post(`${API}/reports/generate`, {}, getAuthHeader());
+      await axios.post(`${API}/reports/generate`, {}, getAuthHeader());
       showMsg("✅ رپورٹ کامیابی سے جنریٹ ہو گئی", "success");
       await fetchReports();
     } catch (err) {
@@ -94,7 +87,7 @@ function SalesReport({ onClose }) {
     }
   };
 
-  // Function to generate Bar Chart as Data URL
+  // Generate Bar Chart as Data URL
   const generateBarChartImage = (topItems) => {
     return new Promise((resolve) => {
       if (!topItems || topItems.length === 0) {
@@ -158,7 +151,7 @@ function SalesReport({ onClose }) {
     });
   };
   
-  // Function to generate Pie Chart as Data URL (WITH LEGEND)
+  // Generate Pie Chart with Legend
   const generatePieChartImage = (topItems) => {
     return new Promise((resolve) => {
       if (!topItems || topItems.length === 0) {
@@ -264,7 +257,7 @@ function SalesReport({ onClose }) {
     });
   };
   
-  // Function to generate Line Chart as Data URL
+  // Generate Line Chart
   const generateLineChartImage = (sales) => {
     return new Promise((resolve) => {
       const dailySales = {};
@@ -370,109 +363,55 @@ function SalesReport({ onClose }) {
     });
   };
 
-  // ✅ FIXED: Generate PDF using hidden iframe to prevent UI flicker/shake
-  const downloadPDF = async (report) => {
+  // NEW: Print-based PDF generation (works perfectly with CSS)
+  const printPDF = async (report) => {
+    setPrintGenerating(true);
     try {
-      showMsg("📄 پی ڈی ایف تیار ہو رہا ہے...", "success");
-
-      // Fetch data
+      showMsg("📄 رپورٹ تیار ہو رہی ہے... براہ کرم انتظار کریں", "success");
+      
       const response = await axios.get(`${API}/reports/${report.report_id}`, getAuthHeader());
       const reportData = response.data;
-
+      
       const salesRes = await axios.get(`${API}/sales/`, getAuthHeader());
       const allSales = salesRes.data || [];
-
+      
       const kpi = reportData.kpi_summary || {};
       const topItems = kpi.top_5_items || [];
-
-      // Generate charts
+      
       const barChartImage = await generateBarChartImage(topItems);
       const pieChartImage = await generatePieChartImage(topItems);
       const lineChartImage = await generateLineChartImage(allSales);
-
-      // HTML
-      const htmlContent = generatePDFWithCharts(
-        reportData,
-        kpi,
-        allSales,
-        shopInfo,
-        user,
-        {
-          barChart: barChartImage,
-          pieChart: pieChartImage,
-          lineChart: lineChartImage
-        }
-      );
-
-      // 🔥 CREATE HIDDEN IFRAME (KEY FIX - isolates rendering from main UI)
-      const iframe = document.createElement("iframe");
-      iframe.style.position = "fixed";
-      iframe.style.right = "0";
-      iframe.style.bottom = "0";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "none";
-      iframe.style.visibility = "hidden";
-
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentWindow.document;
-      iframeDoc.open();
-      iframeDoc.write(htmlContent);
-      iframeDoc.close();
-
-      // Wait for iframe content to fully render
-      await new Promise((resolve) => {
-        if (iframe.contentWindow.document.readyState === "complete") {
-          resolve();
-        } else {
-          iframe.onload = resolve;
-        }
+      
+      // Generate HTML content
+      const htmlContent = generatePrintHTML(reportData, kpi, allSales, shopInfo, user, {
+        barChart: barChartImage,
+        pieChart: pieChartImage,
+        lineChart: lineChartImage
       });
-
-      // Small delay to ensure fonts/images are ready
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Convert to PDF using iframe's body
-      await html2pdf()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename: `Sales_Report_${report.report_id}_${new Date().toISOString().split('T')[0]}.pdf`,
-          image: { type: "jpeg", quality: 0.98 },
-          enableLinks: false,
-          html2canvas: {
-            scale: 2,
-            letterRendering: true,
-            useCORS: true,
-            logging: false,
-            windowWidth: 1100,
-            backgroundColor: '#ffffff'
-          },
-          jsPDF: {
-            unit: "mm",
-            format: "a4",
-            orientation: "portrait",
-            compress: true
-          },
-          pagebreak: { mode: ['css', 'legacy'] }
-        })
-        .from(iframeDoc.body)
-        .save();
-
-      // Cleanup iframe
-      if (iframe.parentNode) {
-        iframe.parentNode.removeChild(iframe);
-      }
-
-      showMsg("✅ پی ڈی ایف کامیابی سے ڈاؤن لوڈ ہو گئی", "success");
-
+      
+      // Open new window for printing
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for content to load then trigger print
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+          showMsg("✅ رپورٹ پرنٹ کے لیے تیار ہے۔ Save as PDF کا انتخاب کریں", "success");
+          setPrintGenerating(false);
+        }, 500);
+      };
+      
     } catch (err) {
-      console.error("PDF generation error:", err);
-      showMsg("پی ڈی ایف ڈاؤن لوڈ نہیں ہو سکی", "error");
+      console.error("Print error:", err);
+      showMsg("رپورٹ تیار نہیں ہو سکی", "error");
+      setPrintGenerating(false);
     }
   };
 
-  const generatePDFWithCharts = (report, kpi, sales, shop, user, charts) => {
+  // HTML for Print (CSS works perfectly in print)
+  const generatePrintHTML = (report, kpi, sales, shop, user, charts) => {
     const totalQuantity = kpi.total_quantity || 0;
     const totalRevenue = kpi.total_revenue || 0;
     const totalTransactions = kpi.total_transactions || 0;
@@ -498,276 +437,132 @@ function SalesReport({ onClose }) {
     
     const totalAllQuantity = Object.values(itemSummary).reduce((sum, item) => sum + item.quantity, 0);
     
-    return `
-      <!DOCTYPE html>
-      <html dir="rtl">
-      <head>
-        <meta charset="UTF-8">
-        <title>فروخت رپورٹ</title>
-        <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: 'Arial', 'Tahoma', 'Segoe UI', sans-serif;
-            padding: 20px;
-            line-height: 1.6;
-            background: #fff;
-            color: #333;
-            font-size: 13px;
-            width: 100%;
-            max-width: 1100px;
-            margin: 0 auto;
-          }
-          .container {
-            max-width: 1100px;
-            margin: 0 auto;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #2C7DA0;
-            padding-bottom: 20px;
-          }
-          .shop-name {
-            font-size: 26px;
-            font-weight: bold;
-            color: #2C7DA0;
-            margin-bottom: 8px;
-          }
-          .shop-address {
-            color: #666;
-            font-size: 11px;
-          }
-          .report-title {
-            font-size: 22px;
-            font-weight: bold;
-            color: #1e3a5f;
-            margin: 15px 0 5px;
-          }
-          .report-date {
-            color: #888;
-            font-size: 11px;
-          }
-          .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 25px 0;
-          }
-          .kpi-card {
-            color: white;
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          }
-          .kpi-card.blue { background: linear-gradient(135deg, #2C7DA0, #1a5a7a); }
-          .kpi-card.green { background: linear-gradient(135deg, #2A9D8F, #1f7a6f); }
-          .kpi-card.orange { background: linear-gradient(135deg, #E76F51, #c45a3f); }
-          .kpi-card.purple { background: linear-gradient(135deg, #8338EC, #6a1fc9); }
-          .kpi-card.teal { background: linear-gradient(135deg, #20B2AA, #158a84); }
-          .kpi-label {
-            font-size: 12px;
-            opacity: 0.9;
-            margin-bottom: 6px;
-          }
-          .kpi-value {
-            font-size: 24px;
-            font-weight: bold;
-          }
-          .section-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #2C7DA0;
-            margin: 25px 0 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #2C7DA0;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-            font-size: 12px;
-          }
-          th {
-            background: #2C7DA0;
-            color: white;
-            padding: 10px 8px;
-            font-weight: bold;
-            border: 1px solid #1a5a7a;
-          }
-          td {
-            padding: 8px;
-            border: 1px solid #ddd;
-            text-align: center;
-          }
-          tr:nth-child(even) {
-            background: #f9f9f9;
-          }
-          .amount {
-            font-weight: bold;
-            color: #2C7DA0;
-          }
-          .chart-page {
-            page-break-before: always;
-            margin-top: 40px;
-            padding-top: 20px;
-          }
-          .chart-container {
-            text-align: center;
-            margin: 30px 0;
-            padding: 20px;
-            background: #fff;
-            border-radius: 12px;
-          }
-          .chart-title {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2C7DA0;
-            margin-bottom: 15px;
-          }
-          .chart-description {
-            color: #666;
-            font-size: 13px;
-            line-height: 1.8;
-            margin: 20px auto;
-            max-width: 80%;
-            text-align: center;
-          }
-          .chart-image {
-            text-align: center;
-            margin: 20px 0;
-          }
-          .chart-image img {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          }
-          .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-            color: #999;
-            font-size: 10px;
-          }
-          @media print {
-            body { padding: 20px; }
-            .chart-page {
-              page-break-before: always;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <div class="shop-name">${shop.shop_name || "میرا اسٹور"}</div>
-            <div class="shop-address">${shop.address || ""}</div>
-            <div class="shop-address">مالک: ${shop.owner_name || user?.username || ""}</div>
-            <div class="report-title">📊 فروخت رپورٹ</div>
-            <div class="report-date">تاریخ: ${report.report_full_date || new Date().toLocaleDateString('ur-PK')}</div>
-          </div>
-
-          <div class="kpi-grid">
-            <div class="kpi-card blue">
-              <div class="kpi-label">کل فروخت مقدار</div>
-              <div class="kpi-value">${totalQuantity.toLocaleString()}</div>
-            </div>
-            <div class="kpi-card green">
-              <div class="kpi-label">کل آمدنی</div>
-              <div class="kpi-value">Rs. ${totalRevenue.toLocaleString()}</div>
-            </div>
-            <div class="kpi-card orange">
-              <div class="kpi-label">کل لین دین</div>
-              <div class="kpi-value">${totalTransactions.toLocaleString()}</div>
-            </div>
-            <div class="kpi-card purple">
-              <div class="kpi-label">منفرد اشیاء</div>
-              <div class="kpi-value">${uniqueItems.toLocaleString()}</div>
-            </div>
-          </div>
-
-          <div class="kpi-grid">
-            <div class="kpi-card teal">
-              <div class="kpi-label">اوسط فروخت فی لین دین</div>
-              <div class="kpi-value">Rs. ${avgPerTransaction.toLocaleString()}</div>
-            </div>
-            <div class="kpi-card blue">
-              <div class="kpi-label">کل مختلف کسٹمرز</div>
-              <div class="kpi-value">${new Set(sales.map(s => s.customer_name).filter(Boolean)).size}</div>
-            </div>
-          </div>
-
-          <div class="section-title">🏆 پانچ سب سے زیادہ فروخت ہونے والی اشیاء</div>
-          <table>
-            <thead>
-              <tr><th>درجہ</th><th>آئٹم کا نام</th><th>فروخت مقدار</th><th>کل آمدنی</th><th>مارکیٹ شیئر %</th></tr>
-            </thead>
-            <tbody>
-              ${topItems.map((item, idx) => {
-                const marketShare = totalAllQuantity > 0 ? ((item[1] / totalAllQuantity) * 100).toFixed(1) : 0;
-                return `<tr>
-                  <td>${idx + 1}</td>
-                  <td style="text-align:right">${item[0]}</td>
-                  <td>${item[1].toLocaleString()}</td>
-                  <td class="amount">Rs. ${item[2].toLocaleString()}</td>
-                  <td>${marketShare}%</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-
-          <div class="chart-page">
-            <div class="chart-container">
-              <div class="chart-title">📊 بار چارٹ: فروخت شدہ مقدار کا موازنہ</div>
-              <div class="chart-description">
-                یہ بار چارٹ پانچ سب سے زیادہ فروخت ہونے والی اشیاء کی مقدار دکھاتا ہے۔<br>
-                جتنا لمبا بار، اس آئٹم کی اتنی زیادہ فروخت ہوئی ہے۔
-              </div>
-              <div class="chart-image">
-                ${charts.barChart ? `<img src="${charts.barChart}" alt="Bar Chart" />` : '<p>چارٹ لوڈ نہیں ہو سکا</p>'}
-              </div>
-            </div>
-          </div>
-
-          <div class="chart-page">
-            <div class="chart-container">
-              <div class="chart-title">🥧 پائی چارٹ: فروخت میں حصہ داری</div>
-              <div class="chart-description">
-                یہ پائی چارٹ ظاہر کرتا ہے کہ ہر آئٹم کا کل فروخت میں کتنا فیصد حصہ ہے۔
-              </div>
-              <div class="chart-image">
-                ${charts.pieChart ? `<img src="${charts.pieChart}" alt="Pie Chart" />` : '<p>چارٹ لوڈ نہیں ہو سکا</p>'}
-              </div>
-            </div>
-          </div>
-
-          <div class="chart-page">
-            <div class="chart-container">
-              <div class="chart-title">📈 لائن چارٹ: فروخت کا رجحان</div>
-              <div class="chart-description">
-                یہ لائن چارٹ وقت کے ساتھ فروخت میں تبدیلی کو ظاہر کرتا ہے۔
-              </div>
-              <div class="chart-image">
-                ${charts.lineChart ? `<img src="${charts.lineChart}" alt="Line Chart" />` : '<p>چارٹ لوڈ نہیں ہو سکا</p>'}
-              </div>
-            </div>
-          </div>
-
-          <div class="footer">
-            <p>شکریہ! یہ رپورٹ سسٹم سے خودکار طور پر جنریٹ کی گئی ہے۔</p>
-            <p>تخلیق شدہ: ${new Date().toLocaleString('ur-PK')}</p>
-          </div>
+    const hasBarChart = charts.barChart && charts.barChart !== '';
+    const hasPieChart = charts.pieChart && charts.pieChart !== '';
+    const hasLineChart = charts.lineChart && charts.lineChart !== '';
+    
+    return `<!DOCTYPE html>
+    <html dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>فروخت رپورٹ</title>
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+          font-family: 'Noto Nastaliq Urdu', 'Arial', 'Tahoma', serif;
+          width: 100%;
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 20px;
+          background: #ffffff;
+          color: #333333;
+          font-size: 13px;
+          line-height: 1.6;
+        }
+        
+        /* Print styles */
+        @media print {
+          body { margin: 0; padding: 15px; }
+          .page-break { page-break-before: always; }
+          .no-break { page-break-inside: avoid; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+        
+        .container { width: 100%; }
+        
+        /* Header */
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2C7DA0; padding-bottom: 20px; }
+        .shop-name { font-size: 26px; font-weight: bold; color: #2C7DA0; margin-bottom: 8px; }
+        .shop-address { color: #666666; font-size: 11px; }
+        .report-title { font-size: 22px; font-weight: bold; color: #1e3a5f; margin: 15px 0 5px; }
+        .report-date { color: #888888; font-size: 11px; }
+        
+        /* KPI Cards */
+        .kpi-grid { display: flex; flex-wrap: wrap; gap: 15px; margin: 25px 0; }
+        .kpi-card { flex: 1 1 200px; color: #ffffff; padding: 15px; border-radius: 12px; text-align: center; }
+        .kpi-card.blue { background: #2C7DA0; }
+        .kpi-card.green { background: #2A9D8F; }
+        .kpi-card.orange { background: #E76F51; }
+        .kpi-card.purple { background: #8338EC; }
+        .kpi-card.teal { background: #20B2AA; }
+        .kpi-label { font-size: 12px; opacity: 0.9; margin-bottom: 6px; }
+        .kpi-value { font-size: 24px; font-weight: bold; }
+        
+        /* Tables */
+        .section-title { font-size: 18px; font-weight: bold; color: #2C7DA0; margin: 25px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #2C7DA0; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+        th { background: #2C7DA0; color: #ffffff; padding: 10px 8px; border: 1px solid #1a5a7a; }
+        td { padding: 8px; border: 1px solid #dddddd; text-align: center; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .amount { font-weight: bold; color: #2C7DA0; }
+        
+        /* Charts */
+        .page-break { page-break-before: always; margin-top: 30px; }
+        .chart-container { text-align: center; margin: 20px 0; padding: 20px; background: #ffffff; border-radius: 12px; }
+        .chart-title { font-size: 20px; font-weight: bold; color: #2C7DA0; margin-bottom: 15px; }
+        .chart-description { color: #666666; font-size: 13px; line-height: 1.8; margin: 15px auto; max-width: 80%; text-align: center; }
+        .chart-image { text-align: center; margin: 20px 0; }
+        .chart-image img { max-width: 100%; height: auto; border: 1px solid #dddddd; border-radius: 8px; }
+        
+        /* Footer */
+        .footer { text-align: center; margin-top: 40px; padding-top: 15px; border-top: 1px solid #dddddd; color: #999999; font-size: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <!-- Page 1: Header + KPIs + Top 5 Items -->
+        <div class="header">
+          <div class="shop-name">${shop.shop_name || "میرا اسٹور"}</div>
+          <div class="shop-address">${shop.address || ""}</div>
+          <div class="shop-address">مالک: ${shop.owner_name || user?.username || ""}</div>
+          <div class="report-title">📊 فروخت رپورٹ</div>
+          <div class="report-date">تاریخ: ${report.report_full_date || new Date().toLocaleDateString('ur-PK')}</div>
         </div>
-      </body>
-      </html>
-    `;
+
+        <div class="kpi-grid">
+          <div class="kpi-card blue"><div class="kpi-label">کل فروخت مقدار</div><div class="kpi-value">${totalQuantity.toLocaleString()}</div></div>
+          <div class="kpi-card green"><div class="kpi-label">کل آمدنی</div><div class="kpi-value">Rs. ${totalRevenue.toLocaleString()}</div></div>
+          <div class="kpi-card orange"><div class="kpi-label">کل لین دین</div><div class="kpi-value">${totalTransactions.toLocaleString()}</div></div>
+          <div class="kpi-card purple"><div class="kpi-label">منفرد اشیاء</div><div class="kpi-value">${uniqueItems.toLocaleString()}</div></div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card teal"><div class="kpi-label">اوسط فروخت فی لین دین</div><div class="kpi-value">Rs. ${avgPerTransaction.toLocaleString()}</div></div>
+          <div class="kpi-card blue"><div class="kpi-label">کل مختلف کسٹمرز</div><div class="kpi-value">${new Set(sales.map(s => s.customer_name).filter(Boolean)).size}</div></div>
+        </div>
+
+        <div class="section-title">🏆 پانچ سب سے زیادہ فروخت ہونے والی اشیاء</div>
+        <table>
+          <thead><tr><th>درجہ</th><th>آئٹم کا نام</th><th>فروخت مقدار</th><th>کل آمدنی</th><th>مارکیٹ شیئر %</th></tr></thead>
+          <tbody>
+            ${topItems.map((item, idx) => {
+              const marketShare = totalAllQuantity > 0 ? ((item[1] / totalAllQuantity) * 100).toFixed(1) : 0;
+              return `<tr>
+                <td>${idx + 1}</td>
+                <td style="text-align:right">${item[0]}</td>
+                <td>${item[1].toLocaleString()}</td>
+                <td class="amount">Rs. ${item[2].toLocaleString()}</td>
+                <td>${marketShare}%</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+
+        ${hasBarChart ? `<div class="page-break"><div class="chart-container"><div class="chart-title">📊 بار چارٹ: فروخت شدہ مقدار کا موازنہ</div><div class="chart-description">یہ بار چارٹ پانچ سب سے زیادہ فروخت ہونے والی اشیاء کی مقدار دکھاتا ہے۔ جتنا لمبا بار، اس آئٹم کی اتنی زیادہ فروخت ہوئی ہے۔</div><div class="chart-image"><img src="${charts.barChart}" alt="Bar Chart" /></div></div></div>` : ''}
+
+        ${hasPieChart ? `<div class="page-break"><div class="chart-container"><div class="chart-title">🥧 پائی چارٹ: فروخت میں حصہ داری</div><div class="chart-description">یہ پائی چارٹ ظاہر کرتا ہے کہ ہر آئٹم کا کل فروخت میں کتنا فیصد حصہ ہے۔</div><div class="chart-image"><img src="${charts.pieChart}" alt="Pie Chart" /></div></div></div>` : ''}
+
+        ${hasLineChart ? `<div class="page-break"><div class="chart-container"><div class="chart-title">📈 لائن چارٹ: فروخت کا رجحان</div><div class="chart-description">یہ لائن چارٹ وقت کے ساتھ فروخت میں تبدیلی کو ظاہر کرتا ہے۔</div><div class="chart-image"><img src="${charts.lineChart}" alt="Line Chart" /></div></div></div>` : ''}
+
+        <div class="footer">
+          <p>شکریہ! یہ رپورٹ سسٹم سے خودکار طور پر جنریٹ کی گئی ہے۔</p>
+          <p>تخلیق شدہ: ${new Date().toLocaleString('ur-PK')}</p>
+        </div>
+      </div>
+    </body>
+    </html>`;
   };
 
   const deleteReport = async (reportId) => {
@@ -791,15 +586,13 @@ function SalesReport({ onClose }) {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentReports = reports.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(reports.length / itemsPerPage);
-
   return (
     <div className="relative min-h-screen bg-gray-50 p-3 md:p-6" dir="rtl">
-      {/* PDF Generation Loader Overlay */}
-      {pdfGenerating && (
+      {printGenerating && (
         <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center">
           <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
             <div className="w-16 h-16 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">پی ڈی ایف تیار ہو رہا ہے</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">رپورٹ تیار ہو رہی ہے</h3>
             <p className="text-gray-500">براہ کرم انتظار کریں...</p>
           </div>
         </div>
@@ -807,14 +600,9 @@ function SalesReport({ onClose }) {
 
       {message.text && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl animate-slide-down text-sm md:text-base transition-all duration-300"
-          style={{
-            backgroundColor: message.type === 'success' ? '#10b981' : '#ef4444',
-            color: 'white',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
-          }}>
+          style={{ backgroundColor: message.type === 'success' ? '#10b981' : '#ef4444', color: 'white' }}>
           <div className="flex items-center gap-2">
             <span className="text-lg">{message.type === 'success' ? '✅' : '❌'}</span>
-            <span className="font-urdu">{message.text}</span>
           </div>
         </div>
       )}
@@ -826,28 +614,14 @@ function SalesReport({ onClose }) {
             <p className="text-gray-500">کل رپورٹس: {reports.length}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={generateReport}
-              disabled={generating || pdfGenerating}
-              className="px-6 py-3 rounded-3xl font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg disabled:opacity-50"
-            >
+            <button onClick={generateReport} disabled={generating || printGenerating} className="px-6 py-3 rounded-3xl font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg disabled:opacity-50">
               {generating ? "⏳ جنریٹ ہو رہا ہے..." : "🔄 نیا رپورٹ جنریٹ کریں"}
             </button>
-            <button
-              onClick={onClose}
-              disabled={pdfGenerating}
-              className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all"
-            >
-              ✕ بند کریں
-            </button>
+            <button onClick={onClose} disabled={printGenerating} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all">✕ بند کریں</button>
           </div>
         </div>
-        
         <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200">
-          <p className="text-amber-800 text-sm">
-            💡 نوٹ: رپورٹ جنریٹ کرنے کے لیے کم از کم 5 مختلف اشیاء کی فروخت ضروری ہے۔ 
-            ہر رپورٹ میں آپ کی تمام فروخت کا تفصیلی تجزیہ شامل ہوتا ہے۔
-          </p>
+          <p className="text-amber-800 text-sm">💡 نوٹ: رپورٹ جنریٹ کرنے کے لیے کم از کم 5 مختلف اشیاء کی فروخت ضروری ہے۔ ہر رپورٹ میں آپ کی تمام فروخت کا تفصیلی تجزیہ شامل ہوتا ہے۔</p>
         </div>
       </div>
 
@@ -889,25 +663,13 @@ function SalesReport({ onClose }) {
                   </td>
                   <td className="p-5 text-center">
                     <div className="flex gap-2 justify-center flex-wrap">
-                      <button
-                        onClick={() => downloadPDF(report)}
-                        disabled={pdfGenerating}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all disabled:opacity-50"
-                      >
-                        {pdfGenerating ? "⏳..." : "📄 پی ڈی ایف"}
+                      <button onClick={() => printPDF(report)} disabled={printGenerating} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all disabled:opacity-50">
+                        {printGenerating ? "⏳..." : "🖨️ پرنٹ / پی ڈی ایف"}
                       </button>
-                      <button
-                        onClick={() => downloadExcel(report.report_id)}
-                        disabled={pdfGenerating}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all disabled:opacity-50"
-                      >
+                      <button onClick={() => downloadExcel(report.report_id)} disabled={printGenerating} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all disabled:opacity-50">
                         📊 ایکسل
                       </button>
-                      <button
-                        onClick={() => deleteReport(report.report_id)}
-                        disabled={pdfGenerating}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all disabled:opacity-50"
-                      >
+                      <button onClick={() => deleteReport(report.report_id)} disabled={printGenerating} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all disabled:opacity-50">
                         🗑️ حذف
                       </button>
                     </div>
@@ -920,10 +682,7 @@ function SalesReport({ onClose }) {
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">📊</div>
                     <p className="text-gray-500 text-lg font-medium">کوئی رپورٹ موجود نہیں ہے</p>
-                    <button
-                      onClick={generateReport}
-                      className="text-amber-600 hover:text-amber-700 font-bold underline"
-                    >
+                    <button onClick={generateReport} className="text-amber-600 hover:text-amber-700 font-bold underline">
                       نیا رپورٹ جنریٹ کریں
                     </button>
                   </div>
@@ -938,7 +697,7 @@ function SalesReport({ onClose }) {
         <div className="mt-4 flex justify-center items-center gap-2 bg-white p-4 rounded-xl shadow">
           <button
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1 || pdfGenerating}
+            disabled={currentPage === 1 || printGenerating}
             className="h-8 w-8 rounded-lg border font-bold transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-100"
           >
             ←
@@ -947,7 +706,7 @@ function SalesReport({ onClose }) {
             <button
               key={i}
               onClick={() => setCurrentPage(i + 1)}
-              disabled={pdfGenerating}
+              disabled={printGenerating}
               className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${
                 currentPage === i + 1
                   ? "bg-amber-600 text-white border-amber-600"
@@ -959,7 +718,7 @@ function SalesReport({ onClose }) {
           ))}
           <button
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages || pdfGenerating}
+            disabled={currentPage === totalPages || printGenerating}
             className="h-8 w-8 rounded-lg border font-bold transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-100"
           >
             →
@@ -969,7 +728,6 @@ function SalesReport({ onClose }) {
     </div>
   );
 }
-
+   
 export default SalesReport;
-
 
