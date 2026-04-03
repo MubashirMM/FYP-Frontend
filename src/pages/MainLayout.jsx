@@ -5,7 +5,7 @@ import axios from "axios";
 const API = import.meta.env.VITE_API_URL;
 
 function MainLayout() {
-  const [isOpen, setIsOpen] = useState(true); // Changed to true for desktop default
+  const [isOpen, setIsOpen] = useState(true);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +34,6 @@ function MainLayout() {
     }
   }, [navigate]);
 
-  // Close sidebar on mobile when navigating
   const closeSidebar = () => {
     if (window.innerWidth < 768) {
       setIsOpen(false);
@@ -46,20 +45,35 @@ function MainLayout() {
     navigate("/login");
   };
 
+  // Menu items list for easy management
+  const menuItems = [
+    { to: "/main", icon: "🏠", label: "مین ڈیش بورڈ" },
+    { to: "/items", icon: "📦", label: "آئٹمز مینجمنٹ" },
+    { to: "/udhaar-items", icon: "📋", label: "اُدھار آئٹمز" },
+    { to: "/bill-items", icon: "📝", label: "بل آئٹمز" },
+    { to: "/khata", icon: "📒", label: "کھاتہ کتاب" },
+    { to: "/bills", icon: "📄", label: "بلز مینجمنٹ" },
+    { to: "/sales", icon: "💰", label: "فروخت کی ریکارڈ" },
+    { to: "/bill-item-history", icon: "📜", label: "بل آئٹم ہسٹری" },
+    { to: "/shop", icon: "🛒", label: "اسٹور سیٹنگز" },
+    { to: "/sales-report", icon: "📊", label: "فروخت رپورٹ" },
+  ];
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 text-right" dir="rtl">
+      {/* Mobile overlay */}
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsOpen(false)} />
       )}
 
       {/* Sidebar */}
       <aside className={`
-        fixed md:static top-0 right-0 z-50 h-full bg-gradient-to-b from-gray-900 to-gray-800 text-white
-        transition-all duration-300 ease-in-out shadow-2xl
+        fixed md:sticky top-0 right-0 z-50 h-full bg-gradient-to-b from-gray-900 to-gray-800 text-white
+        transition-all duration-300 ease-in-out shadow-2xl flex flex-col
         ${isOpen ? "w-64 translate-x-0" : "w-64 translate-x-full md:translate-x-0 md:w-20"}
       `}>
         {/* Sidebar Header with Toggle Button */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-700 shrink-0">
           {isOpen && (
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -76,104 +90,39 @@ function MainLayout() {
           </button>
         </div>
 
-        <nav className="mt-6 flex flex-col gap-1 px-2">
-          <SidebarItem 
-            to="/main" 
-            icon="🏠" 
-            label="مین ڈیش بورڈ" 
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/main"}
-          />
-          <SidebarItem 
-            to="/items" 
-            icon="📦" 
-            label="آئٹمز مینجمنٹ" 
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/items"}
-          />
-          <SidebarItem 
-            to="/udhaar-items" 
-            icon="📋" 
-            label="اُدھار آئٹمز" 
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/udhaar-items"}
-          />
-          <SidebarItem 
-            to="/bill-items" 
-            icon="📝" 
-            label="بل آئٹمز" 
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/bill-items"}
-          />
-          <SidebarItem 
-            to="/khata" 
-            icon="📒" 
-            label="کھاتہ کتاب" 
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/khata"}
-          />
-          <SidebarItem 
-            to="/bills" 
-            icon="📄" 
-            label="بلز مینجمنٹ" 
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/bills"}
-          />
-          <SidebarItem 
-            to="/sales" 
-            icon="💰" 
-            label="فروخت کی ریکارڈ" 
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/sales"}
-          />
-          <SidebarItem 
-  to="/bill-item-history" 
-  icon="📜" 
-  label="بل آئٹم ہسٹری" 
-  isOpen={isOpen} 
-  onClick={closeSidebar}
-  isActive={location.pathname === "/bill-item-history"}
-/>
-          <SidebarItem 
-            to="/shop" 
-            icon="🛒" 
-            label="اسٹور سیٹنگز" 
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/shop"}
-          />
-          <SidebarItem 
-            to="/sales-report" 
-            icon="🛒" 
-            label="فروخت رپورٹ"
-            isOpen={isOpen} 
-            onClick={closeSidebar}
-            isActive={location.pathname === "/sales-report"}
-          />
-
-          <div className="mt-auto border-t border-gray-700 pt-4 mt-6">
-            <SidebarItem 
-              to="#" 
-              icon="🚪" 
-              label="لاگ آؤٹ" 
-              isOpen={isOpen} 
-              isActive={false}
-              onClick={(e) => { e.preventDefault(); handleLogout(); }} 
-            />
+        {/* Scrollable Menu Items */}
+        <nav className="flex-1 overflow-y-auto py-4 px-2 custom-scrollbar">
+          <div className="flex flex-col gap-1">
+            {menuItems.map((item) => (
+              <SidebarItem 
+                key={item.to}
+                to={item.to} 
+                icon={item.icon} 
+                label={item.label} 
+                isOpen={isOpen} 
+                onClick={closeSidebar}
+                isActive={location.pathname === item.to}
+              />
+            ))}
           </div>
         </nav>
+
+        {/* Logout Button - Fixed at bottom */}
+        <div className="border-t border-gray-700 p-2 shrink-0">
+          <SidebarItem 
+            to="#" 
+            icon="🚪" 
+            label="لاگ آؤٹ" 
+            isOpen={isOpen} 
+            isActive={false}
+            onClick={(e) => { e.preventDefault(); handleLogout(); }} 
+          />
+        </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* HEADER */}
-        <header className="bg-white border-b h-16 flex items-center justify-between px-4 md:px-6 shadow-md">
+        <header className="bg-white border-b h-16 flex items-center justify-between px-4 md:px-6 shadow-md shrink-0">
           {/* LEFT: Mobile Menu Button + Store Name Clickable */}
           <div className="flex items-center gap-3">
             <button 
