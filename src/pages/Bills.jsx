@@ -82,7 +82,7 @@ const payBill = async (customerName) => {
     try {
       await axios.delete(`${API}/bills/${deleteId}`, getAuthHeader());
       showMsg("✅ بل کامیابی سے حذف کر دیا گیا", "success");
-      setDeleteId(null);
+      setDeleteId(null); 
       fetchBills();
       if (onItemAdded) onItemAdded();
     } catch (err) {
@@ -94,7 +94,7 @@ const payBill = async (customerName) => {
   const showMsg = (text, type) => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: "", type: "" }), 3000);
-  };
+  }; 
 
   const downloadBill = (bill) => {
     try {

@@ -13,15 +13,15 @@ function Udhaars({ onItemAdded, onClose }) {
   const [selectedUdhar, setSelectedUdhar] = useState(null);
   const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
-  const [sortBy, setSortBy] = useState("paid_date");
+  const [sortBy, setSortBy] = useState("created_date");
   const [sortOrder, setSortOrder] = useState("desc");
   const [deleteId, setDeleteId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
+
   // Form states for direct addition/deduction
   const [showAdditionForm, setShowAdditionForm] = useState(false);
   const [showDeductionForm, setShowDeductionForm] = useState(false);
@@ -47,7 +47,8 @@ function Udhaars({ onItemAdded, onClose }) {
       const res = await axios.get(`${API}/udhars/`, getAuthHeader());
       const data = res.data || [];
       setUdhars(data);
-      applyFiltersAndSort(data, statusFilter, search, sortBy, sortOrder);
+      setFilteredUdhars(data);
+      setCurrentPage(1);
     } catch (err) {
       if (err.response?.status !== 404) {
         showMsg(err.response?.data?.detail || "کھاتہ لوڈ کرنے میں خرابی", "error");
@@ -73,15 +74,9 @@ function Udhaars({ onItemAdded, onClose }) {
         ...getAuthHeader() 
       });
       
-      if (response.data && response.data.message) {
-        showMsg(response.data.message, "success");
-      } else {
-        showMsg("اُدھار کامیابی سے ادا کر دیا گیا", "success");
-      }
-      
+      showMsg(response.data.message || "اُدھار کامیابی سے ادا کر دیا گیا", "success");
       await fetchUdhars();
       setSelectedUdhar(null);
-      
     } catch (err) {
       const errorMsg = err.response?.data?.detail || "ادائیگی ناکام";
       showMsg(errorMsg, "error");
@@ -102,31 +97,20 @@ function Udhaars({ onItemAdded, onClose }) {
       return;
     }
     
-    if (isNaN(amount) || amount.toString().trim() === "") {
-      setFormMessage({ text: "براہ کرم درست رقم درج کریں", type: "error" });
-      return;
-    }
-    
     setFormLoading(true);
     try {
-      const response = await axios.put(
+      await axios.put(
         `${API}/udhars/${encodeURIComponent(selectedCustomer)}/direct-addition`,
         null,
         { params: { amount: parseFloat(amount) }, ...getAuthHeader() }
       );
       
-      // Close form immediately
       setShowAdditionForm(false);
       setSelectedCustomer("");
       setAmount("");
       setFormMessage({ text: "", type: "" });
-      
-      // Show success message
-      showMsg(response.data.message || "✅ براہ راست جمع کامیابی سے شامل کر دی گئی", "success");
-      
-      // Refresh data
+      showMsg("✅ براہ راست جمع کامیابی سے شامل کر دی گئی", "success");
       await fetchUdhars();
-      
     } catch (err) {
       setFormMessage({ text: err.response?.data?.detail || "جمع کرنے میں خرابی", type: "error" });
     } finally {
@@ -148,31 +132,20 @@ function Udhaars({ onItemAdded, onClose }) {
       return;
     }
     
-    if (isNaN(amount) || amount.toString().trim() === "") {
-      setFormMessage({ text: "براہ کرم درست رقم درج کریں", type: "error" });
-      return;
-    }
-    
     setFormLoading(true);
     try {
-      const response = await axios.put(
+      await axios.put(
         `${API}/udhars/${encodeURIComponent(selectedCustomer)}/direct-deduction`,
         null,
         { params: { amount: parseFloat(amount) }, ...getAuthHeader() }
       );
       
-      // Close form immediately
       setShowDeductionForm(false);
       setSelectedCustomer("");
       setAmount("");
       setFormMessage({ text: "", type: "" });
-      
-      // Show success message
-      showMsg(response.data.message || "✅ براہ راست کٹوتی کامیابی سے شامل کر دی گئی", "success");
-      
-      // Refresh data
+      showMsg("✅ براہ راست کٹوتی کامیابی سے شامل کر دی گئی", "success");
       await fetchUdhars();
-      
     } catch (err) {
       setFormMessage({ text: err.response?.data?.detail || "کٹوتی کرنے میں خرابی", type: "error" });
     } finally {
@@ -183,8 +156,8 @@ function Udhaars({ onItemAdded, onClose }) {
   const handleDeleteUdhar = async () => {
     setDeleteError("");
     try {
-      const response = await axios.delete(`${API}/udhars/${deleteId}`, getAuthHeader());
-      showMsg(response.data.message || "✅ اُدھار کامیابی سے حذف کر دیا گیا", "success");
+      await axios.delete(`${API}/udhars/${deleteId}`, getAuthHeader());
+      showMsg("✅ اُدھار کامیابی سے حذف کر دیا گیا", "success");
       setDeleteId(null);
       await fetchUdhars();
       if (onItemAdded) onItemAdded();
@@ -199,121 +172,150 @@ function Udhaars({ onItemAdded, onClose }) {
     setTimeout(() => setMessage({ text: "", type: "" }), 3000);
   };
 
-  const downloadUdhar = (udhar) => {
-    // ... (keep your existing download function)
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html dir="rtl">
-      <head>
-        <meta charset="UTF-8">
-        <title>اُدھار بل - ${udhar.customer_name}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: 'Arial', 'Tahoma', sans-serif;
-            padding: 50px;
-            line-height: 1.8;
-            background: #fff;
-            color: #333;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 20px;
-          }
-          .shop-name {
-            font-size: 28px;
-            font-weight: bold;
-            color: #d97706;
-            margin-bottom: 10px;
-          }
-          .shop-address {
-            color: #666;
-            font-size: 14px;
-          }
-          .bill-info {
-            display: flex;
-            justify-content: space-between;
-            margin: 30px 0;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 12px;
-            flex-wrap: wrap;
-            gap: 15px;
-          }
-          .info-group {
-            text-align: center;
-            flex: 1;
-          }
-          .info-label {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 5px;
-          }
-          .info-value {
-            font-size: 16px;
-            font-weight: bold;
-            color: #333;
-          }
-          .amount-box {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            margin: 30px 0;
-          }
-          .amount-label {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 10px;
-          }
-          .amount-value {
-            font-size: 48px;
-            font-weight: bold;
-          }
-          .details-table {
-            width: 100%;
-            margin: 30px 0;
-            border-collapse: collapse;
-          }
-          .details-table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-          }
-          .details-table td:first-child {
-            font-weight: bold;
-            color: #666;
-          }
-          .details-table td:last-child {
-            text-align: left;
-            font-weight: bold;
-          }
-          .status {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-          }
-          .status-paid {
-            background: #d1fae5;
-            color: #065f46;
-          }
-          .status-unpaid {
-            background: #fee2e2;
-            color: #991b1b;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #999;
-            font-size: 12px;
-          }
-        </style>
+  // Helper function to extract day from created_date_urdu
+  const extractDayName = (dateUrdu) => {
+    if (!dateUrdu) return "";
+    const parts = dateUrdu.split("،");
+    return parts[0] || "";
+  };
+
+  // Helper function to extract day number, month, year from created_date_urdu
+  const extractDateParts = (dateUrdu) => {
+    if (!dateUrdu) return { day: "", month: "", year: "" };
+    const parts = dateUrdu.split("،");
+    if (parts.length < 2) return { day: "", month: "", year: "" };
+    const datePart = parts[1].trim();
+    const dateParts = datePart.split(" ");
+    if (dateParts.length >= 3) {
+      return {
+        day: dateParts[0],
+        month: dateParts[1],
+        year: dateParts[2]
+      };
+    }
+    return { day: "", month: "", year: "" };
+  };
+
+  const printUdhar = (udhar) => {
+    const dateParts = extractDateParts(udhar.created_date_urdu);
+    const paidDateParts = udhar.paid_date_urdu ? extractDateParts(udhar.paid_date_urdu) : { day: "", month: "", year: "" };
+    const dayName = extractDayName(udhar.created_date_urdu);
+    const paidDayName = udhar.paid_date_urdu ? extractDayName(udhar.paid_date_urdu) : "";
+    
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <html dir="rtl"><head><title>اُدھار بل - ${udhar.customer_name}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Arial', 'Tahoma', sans-serif;
+          padding: 40px;
+          line-height: 1.6;
+          background: #fff;
+          color: #333;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 40px;
+          border-bottom: 2px solid #ddd;
+          padding-bottom: 20px;
+        }
+        .shop-name {
+          font-size: 28px;
+          font-weight: bold;
+          color: #d97706;
+          margin-bottom: 10px;
+        }
+        .shop-address {
+          color: #666;
+          font-size: 14px;
+        }
+        .bill-info {
+          display: flex;
+          justify-content: space-between;
+          margin: 30px 0;
+          padding: 20px;
+          background: #f9f9f9;
+          border-radius: 12px;
+          flex-wrap: wrap;
+          gap: 15px;
+        }
+        .info-group {
+          text-align: center;
+          flex: 1;
+        }
+        .info-label {
+          font-size: 12px;
+          color: #666;
+          margin-bottom: 5px;
+        }
+        .info-value {
+          font-size: 16px;
+          font-weight: bold;
+          color: #333;
+        }
+        .amount-box {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          color: white;
+          padding: 30px;
+          border-radius: 20px;
+          text-align: center;
+          margin: 30px 0;
+        }
+        .amount-label {
+          font-size: 14px;
+          opacity: 0.9;
+          margin-bottom: 10px;
+        }
+        .amount-value {
+          font-size: 48px;
+          font-weight: bold;
+        }
+        .details-table {
+          width: 100%;
+          margin: 30px 0;
+          border-collapse: collapse;
+        }
+        .details-table td {
+          padding: 12px;
+          border-bottom: 1px solid #eee;
+        }
+        .details-table td:first-child {
+          font-weight: bold;
+          color: #666;
+        }
+        .details-table td:last-child {
+          text-align: left;
+          font-weight: bold;
+        }
+        .status {
+          display: inline-block;
+          padding: 6px 16px;
+          border-radius: 20px;
+          font-size: 14px;
+          font-weight: bold;
+        }
+        .status-paid {
+          background: #d1fae5;
+          color: #065f46;
+        }
+        .status-unpaid {
+          background: #fee2e2;
+          color: #991b1b;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 60px;
+          padding-top: 20px;
+          border-top: 1px solid #ddd;
+          color: #999;
+          font-size: 12px;
+        }
+        @media print {
+          body { padding: 20px; }
+          .no-print { display: none; }
+        }
+      </style>
       </head>
       <body>
         <div class="header">
@@ -333,15 +335,23 @@ function Udhaars({ onItemAdded, onClose }) {
           </div>
           <div class="info-group">
             <div class="info-label">تاریخ تخلیق</div>
-            <div class="info-value">${udhar.created_date_urdu || udhar.created_date}</div>
+            <div class="info-value">${dayName}، ${dateParts.day} ${dateParts.month} ${dateParts.year}</div>
+          </div>
+          <div class="info-group">
+            <div class="info-label">وقت</div>
+            <div class="info-value">${udhar.udhar_time || udhar.created_time || "—"}</div>
           </div>
         </div>
 
-        ${udhar.status === "paid" && udhar.paid_date ? `
+        ${udhar.status === "paid" ? `
         <div class="bill-info" style="background: #d1fae5;">
           <div class="info-group">
             <div class="info-label">ادا شدہ تاریخ</div>
-            <div class="info-value">${udhar.paid_date_urdu || udhar.paid_date}</div>
+            <div class="info-value">${paidDayName}، ${paidDateParts.day} ${paidDateParts.month} ${paidDateParts.year}</div>
+          </div>
+          <div class="info-group">
+            <div class="info-label">ادا شدہ وقت</div>
+            <div class="info-value">${udhar.paid_time || "—"}</div>
           </div>
         </div>
         ` : ''}
@@ -363,45 +373,6 @@ function Udhaars({ onItemAdded, onClose }) {
         </div>
       </body>
       </html>
-    `;
-
-    const blob = new Blob([htmlContent], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.download = `Udhaar_Bill_${udhar.customer_name}_${udhar.udhar_id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const printUdhar = (udhar) => {
-    const printWindow = window.open("", "_blank");
-    printWindow.document.write(`
-      <html dir="rtl"><head><title>اُدھار بل</title>
-      <style>
-        body{font-family:Arial,sans-serif;padding:40px;line-height:1.6}
-        .header{text-align:center;margin-bottom:30px}
-        .amount{font-size:2em;font-weight:bold;color:#d97706;text-align:center;margin:30px}
-      </style>
-      </head><body>
-        <div class="header">
-          <h1>${shopInfo.shop_name || "میرا اسٹور"}</h1>
-          <p>${shopInfo.address || ""}</p>
-          <p>مالک: ${shopInfo.owner_name || user?.username}</p>
-        </div>
-        <hr>
-        <p><strong>کسٹمر:</strong> ${udhar.customer_name}</p>
-        <p><strong>اُدھار نمبر:</strong> #${udhar.udhar_id}</p>
-        <p><strong>تاریخ تخلیق:</strong> ${udhar.created_date_urdu || udhar.created_date}</p>
-        ${udhar.status === "paid" && udhar.paid_date ? `<p><strong>ادا شدہ تاریخ:</strong> ${udhar.paid_date_urdu || udhar.paid_date}</p>` : ''}
-        <div class="amount">کل رقم: ${udhar.total} روپے</div>
-        <p><strong>سب ٹوٹل:</strong> ${udhar.subtotal}</p>
-        <p><strong>براہ راست جمع:</strong> ${udhar.direct_addition}</p>
-        <p><strong>براہ راست کٹوتی:</strong> ${udhar.direct_deduction}</p>
-        <p style="text-align:center;margin-top:50px">شکریہ!</p>
-      </body></html>
     `);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 500);
@@ -413,41 +384,41 @@ function Udhaars({ onItemAdded, onClose }) {
     fetchUser();
   }, []);
 
-  const applyFiltersAndSort = (data, filter, searchTerm, sortField, order) => {
-    let filtered = [...data];
+  const applyFiltersAndSort = () => {
+    let filtered = [...udhars];
     
-    if (filter !== "all") {
-      filtered = filtered.filter(u => u.status === filter);
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(u => u.status === statusFilter);
     }
     
-    if (searchTerm) {
+    if (search) {
       filtered = filtered.filter(u => 
-        u.customer_name.toLowerCase().includes(searchTerm.toLowerCase())
+        (u.customer_name || "").toLowerCase().includes(search.toLowerCase())
       );
     }
     
     filtered.sort((a, b) => {
       let aVal, bVal;
-      if (sortField === "customer") {
+      if (sortBy === "customer") {
         aVal = a.customer_name;
         bVal = b.customer_name;
-      } else if (sortField === "total") {
+      } else if (sortBy === "total") {
         aVal = a.total;
         bVal = b.total;
-      } else if (sortField === "created_date") {
+      } else if (sortBy === "created_date") {
         aVal = a.created_date || "";
         bVal = b.created_date || "";
-      } else if (sortField === "paid_date") {
-        const aPaid = a.status === "paid" ? (a.paid_date || a.created_date) : "9999-12-31";
-        const bPaid = b.status === "paid" ? (b.paid_date || b.created_date) : "9999-12-31";
+      } else if (sortBy === "paid_date") {
+        const aPaid = a.status === "paid" ? (a.paid_date || "9999-12-31") : "9999-12-31";
+        const bPaid = b.status === "paid" ? (b.paid_date || "9999-12-31") : "9999-12-31";
         aVal = aPaid;
         bVal = bPaid;
       } else {
-        aVal = a[sortField];
-        bVal = b[sortField];
+        aVal = a[sortBy];
+        bVal = b[sortBy];
       }
       
-      if (order === "asc") {
+      if (sortOrder === "asc") {
         return aVal > bVal ? 1 : -1;
       } else {
         return aVal < bVal ? 1 : -1;
@@ -458,21 +429,23 @@ function Udhaars({ onItemAdded, onClose }) {
     setCurrentPage(1);
   };
 
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [udhars, statusFilter, search, sortBy, sortOrder]);
+
   const handleFilter = (filter) => {
     setStatusFilter(filter);
-    applyFiltersAndSort(udhars, filter, search, sortBy, sortOrder);
   };
 
   const handleSearch = (e) => {
-    e?.preventDefault();
-    applyFiltersAndSort(udhars, statusFilter, search, sortBy, sortOrder);
+    e.preventDefault();
+    applyFiltersAndSort();
   };
 
   const handleSort = (field) => {
     const newOrder = sortBy === field && sortOrder === "asc" ? "desc" : "asc";
     setSortBy(field);
     setSortOrder(newOrder);
-    applyFiltersAndSort(udhars, statusFilter, search, field, newOrder);
   };
 
   const getEmptyMessage = () => {
@@ -499,11 +472,7 @@ function Udhaars({ onItemAdded, onClose }) {
             boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
           }}>
           <div className="flex items-center gap-2">
-            {message.type === 'success' ? (
-              <span className="text-lg">✅</span>
-            ) : (
-              <span className="text-lg">❌</span>
-            )}
+            <span className="text-lg">{message.type === 'success' ? '✅' : '❌'}</span>
             <span className="font-urdu">{message.text}</span>
           </div>
         </div>
@@ -552,23 +521,10 @@ function Udhaars({ onItemAdded, onClose }) {
                 <p className="text-gray-500 text-xs mt-1 text-right">رقم صفر سے زیادہ ہونی چاہیے</p>
               </div>
               <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl font-bold transition-all disabled:opacity-50"
-                >
+                <button type="submit" disabled={formLoading} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl font-bold transition-all disabled:opacity-50">
                   {formLoading ? "جمع کر رہا ہے..." : "✅ جمع کریں"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAdditionForm(false);
-                    setSelectedCustomer("");
-                    setAmount("");
-                    setFormMessage({ text: "", type: "" });
-                  }}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 py-4 rounded-2xl font-bold transition-all"
-                >
+                <button type="button" onClick={() => { setShowAdditionForm(false); setSelectedCustomer(""); setAmount(""); setFormMessage({ text: "", type: "" }); }} className="flex-1 bg-gray-200 hover:bg-gray-300 py-4 rounded-2xl font-bold transition-all">
                   ❌ منسوخ
                 </button>
               </div>
@@ -620,23 +576,10 @@ function Udhaars({ onItemAdded, onClose }) {
                 <p className="text-gray-500 text-xs mt-1 text-right">رقم صفر سے زیادہ ہونی چاہیے</p>
               </div>
               <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-bold transition-all disabled:opacity-50"
-                >
+                <button type="submit" disabled={formLoading} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-bold transition-all disabled:opacity-50">
                   {formLoading ? "کٹوتی کر رہا ہے..." : "✂️ کٹوتی کریں"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDeductionForm(false);
-                    setSelectedCustomer("");
-                    setAmount("");
-                    setFormMessage({ text: "", type: "" });
-                  }}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 py-4 rounded-2xl font-bold transition-all"
-                >
+                <button type="button" onClick={() => { setShowDeductionForm(false); setSelectedCustomer(""); setAmount(""); setFormMessage({ text: "", type: "" }); }} className="flex-1 bg-gray-200 hover:bg-gray-300 py-4 rounded-2xl font-bold transition-all">
                   ❌ منسوخ
                 </button>
               </div>
@@ -678,31 +621,16 @@ function Udhaars({ onItemAdded, onClose }) {
             />
           </form>
           <div className="flex gap-2">
-            <button 
-              onClick={() => {
-                setShowAdditionForm(true);
-                setFormMessage({ text: "", type: "" });
-              }} 
-              className="px-6 py-3 rounded-3xl font-bold bg-green-600 text-white hover:bg-green-700 transition-all"
-            >
+            <button onClick={() => { setShowAdditionForm(true); setFormMessage({ text: "", type: "" }); }} className="px-6 py-3 rounded-3xl font-bold bg-green-600 text-white hover:bg-green-700 transition-all">
               + براہ راست جمع
             </button>
-            <button 
-              onClick={() => {
-                setShowDeductionForm(true);
-                setFormMessage({ text: "", type: "" });
-              }} 
-              className="px-6 py-3 rounded-3xl font-bold bg-red-600 text-white hover:bg-red-700 transition-all"
-            >
+            <button onClick={() => { setShowDeductionForm(true); setFormMessage({ text: "", type: "" }); }} className="px-6 py-3 rounded-3xl font-bold bg-red-600 text-white hover:bg-red-700 transition-all">
               - براہ راست کٹوتی
             </button>
             <button onClick={() => handleFilter("all")} className={`px-6 py-3 rounded-3xl font-bold transition-all ${statusFilter === "all" ? "bg-amber-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>سب</button>
             <button onClick={() => handleFilter("unpaid")} className={`px-6 py-3 rounded-3xl font-bold transition-all ${statusFilter === "unpaid" ? "bg-rose-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>غیر ادا شدہ</button>
             <button onClick={() => handleFilter("paid")} className={`px-6 py-3 rounded-3xl font-bold transition-all ${statusFilter === "paid" ? "bg-emerald-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>ادا شدہ</button>
-            <button 
-              onClick={onClose} 
-              className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all"
-            >
+            <button onClick={onClose} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all">
               ✕ بند کریں
             </button>
           </div>
@@ -710,7 +638,7 @@ function Udhaars({ onItemAdded, onClose }) {
       </div>
 
       <div className="bg-white shadow-xl rounded-b-3xl overflow-hidden border overflow-x-auto">
-        <table className="w-full min-w-[1200px]">
+        <table className="w-full min-w-[1100px]">
           <thead className="bg-gray-100">
             <tr>
               <th className="p-5 border-l font-bold cursor-pointer hover:bg-gray-200" onClick={() => handleSort("customer")}>کسٹمر</th>
@@ -719,8 +647,8 @@ function Udhaars({ onItemAdded, onClose }) {
               <th className="p-5 border-l font-bold text-center">براہ راست جمع</th>
               <th className="p-5 border-l font-bold text-center">براہ راست کٹوتی</th>
               <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("total")}>کل اُدھار</th>
-              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("created_date")}>تخلیق تاریخ</th>
-              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("paid_date")}>ادائیگی تاریخ</th>
+              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("created_date")}>تخلیق تاریخ / وقت</th>
+              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort("paid_date")}>ادائیگی تاریخ / وقت</th>
               <th className="p-5 border-l font-bold text-center">اسٹیٹس</th>
               <th className="p-5 text-center font-bold">عمل</th>
             </tr>
@@ -732,34 +660,54 @@ function Udhaars({ onItemAdded, onClose }) {
                   <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
                   <span>لوڈ ہو رہا ہے...</span>
                 </div>
-              </td></tr>
+                </td></tr>
             ) : currentItems.length > 0 ? (
-              currentItems.map((u) => (
-                <tr key={u.udhar_id} className="border-b hover:bg-amber-50 transition-colors">
-                  <td className="p-5 border-l font-bold">{u.customer_name}</td>
-                  <td className="p-5 border-l text-center font-mono">#{u.udhar_id}</td>
-                  <td className="p-5 border-l text-center">{u.subtotal?.toLocaleString() || 0}</td>
-                  <td className="p-5 border-l text-center text-green-600">+{u.direct_addition?.toLocaleString() || 0}</td>
-                  <td className="p-5 border-l text-center text-red-600">-{u.direct_deduction?.toLocaleString() || 0}</td>
-                  <td className="p-5 border-l text-center font-bold text-xl text-amber-700">{u.total?.toLocaleString() || 0}</td>
-                  <td className="p-5 border-l text-center text-sm">{u.created_date_urdu || u.created_date || "—"}</td>
-                  <td className="p-5 border-l text-center text-sm">
-                    {u.status === "paid" ? (u.paid_date_urdu || u.paid_date || "—") : "—"}
-                  </td>
-                  <td className="p-5 border-l text-center">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${u.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                      {u.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}
-                    </span>
-                  </td>
-                  <td className="p-5 text-center">
-                    <div className="flex gap-2 justify-center">
-                      <button onClick={() => setSelectedUdhar(u)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">👁️ دیکھیں</button>
-                      <button onClick={() => downloadUdhar(u)} className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">📥 ڈاؤن لوڈ</button>
-                      <button onClick={() => setDeleteId(u.udhar_id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">🗑️ حذف</button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              currentItems.map((u) => {
+                const dateParts = extractDateParts(u.created_date_urdu);
+                const paidDateParts = u.paid_date_urdu ? extractDateParts(u.paid_date_urdu) : { day: "", month: "", year: "" };
+                const dayName = extractDayName(u.created_date_urdu);
+                const paidDayName = u.paid_date_urdu ? extractDayName(u.paid_date_urdu) : "";
+                
+                return (
+                  <tr key={u.udhar_id} className="border-b hover:bg-amber-50 transition-colors">
+                    <td className="p-5 border-l font-bold">{u.customer_name}</td>
+                    <td className="p-5 border-l text-center font-mono">#{u.udhar_id}</td>
+                    <td className="p-5 border-l text-center">{u.subtotal?.toLocaleString() || 0}</td>
+                    <td className="p-5 border-l text-center text-green-600">+{u.direct_addition?.toLocaleString() || 0}</td>
+                    <td className="p-5 border-l text-center text-red-600">-{u.direct_deduction?.toLocaleString() || 0}</td>
+                    <td className="p-5 border-l text-center font-bold text-xl text-amber-700">{u.total?.toLocaleString() || 0}</td>
+                    
+                    {/* تخلیق تاریخ / وقت - Combined Column */}
+                    <td className="p-5 border-l text-center text-sm">
+                      <div>{dayName}، {dateParts.day} {dateParts.month} {dateParts.year}</div>
+                      <div className="text-xs text-gray-500 mt-1">{u.udhar_time || u.created_time || "—"}</div>
+                    </td>
+                    
+                    {/* ادائیگی تاریخ / وقت - Combined Column */}
+                    <td className="p-5 border-l text-center text-sm">
+                      {u.status === "paid" ? (
+                        <>
+                          <div>{paidDayName}، {paidDateParts.day} {paidDateParts.month} {paidDateParts.year}</div>
+                          <div className="text-xs text-gray-500 mt-1">{u.paid_time || "—"}</div>
+                        </>
+                      ) : "—"}
+                    </td>
+                    
+                    <td className="p-5 border-l text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${u.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {u.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}
+                      </span>
+                    </td>
+                    <td className="p-5 text-center">
+                      <div className="flex gap-2 justify-center">
+                        <button onClick={() => setSelectedUdhar(u)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">👁️ دیکھیں</button>
+                        <button onClick={() => printUdhar(u)} className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">🖨️ پرنٹ</button>
+                        <button onClick={() => setDeleteId(u.udhar_id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">🗑️ حذف</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="10" className="p-20 text-center">
@@ -767,13 +715,13 @@ function Udhaars({ onItemAdded, onClose }) {
                     <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">📊</div>
                     <p className="text-gray-500 text-lg font-medium">{getEmptyMessage()}</p>
                     {(search || statusFilter !== "all") && (
-                      <button onClick={() => { setSearch(""); setStatusFilter("all"); applyFiltersAndSort(udhars, "all", "", sortBy, sortOrder); }} className="text-amber-600 hover:text-amber-700 font-bold underline">
+                      <button onClick={() => { setSearch(""); setStatusFilter("all"); }} className="text-amber-600 hover:text-amber-700 font-bold underline">
                         تمام کسٹمرز دیکھیں
                       </button>
                     )}
                   </div>
                 </td>
-               </tr>
+              </tr>
             )}
           </tbody>
         </table>
@@ -782,11 +730,31 @@ function Udhaars({ onItemAdded, onClose }) {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-4 flex justify-center items-center gap-2 bg-white p-4 rounded-xl shadow">
-          <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="h-8 w-8 rounded-lg border font-bold transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-100">←</button>
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="h-8 w-8 rounded-lg border font-bold transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-100"
+          >
+            ←
+          </button>
           {[...Array(totalPages)].map((_, i) => (
-            <button key={i} onClick={() => setCurrentPage(i + 1)} className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${currentPage === i + 1 ? "bg-amber-600 text-white border-amber-600" : "bg-white hover:bg-gray-100"}`}>{i + 1}</button>
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${
+                currentPage === i + 1 ? "bg-amber-600 text-white border-amber-600" : "bg-white hover:bg-gray-100"
+              }`}
+            >
+              {i + 1}
+            </button>
           ))}
-          <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="h-8 w-8 rounded-lg border font-bold transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-100">→</button>
+          <button
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="h-8 w-8 rounded-lg border font-bold transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-100"
+          >
+            →
+          </button>
         </div>
       )}
 
@@ -803,12 +771,13 @@ function Udhaars({ onItemAdded, onClose }) {
             <div className="flex justify-between items-center mb-6 p-4 bg-gray-50 rounded-2xl flex-wrap gap-3">
               <div><span className="text-gray-600">اُدھار نمبر:</span> <strong className="text-lg">#{selectedUdhar.udhar_id}</strong></div>
               <div><span className="text-gray-600">کسٹمر:</span> <strong className="text-lg">{selectedUdhar.customer_name}</strong></div>
-              <div><span className="text-gray-600">تاریخ تخلیق:</span> <strong>{selectedUdhar.created_date_urdu || selectedUdhar.created_date}</strong></div>
+              <div><span className="text-gray-600">تاریخ تخلیق:</span> <strong>{selectedUdhar.created_date_urdu}</strong></div>
+              <div><span className="text-gray-600">وقت:</span> <strong>{selectedUdhar.udhar_time || selectedUdhar.created_time || "—"}</strong></div>
             </div>
 
             {selectedUdhar.status === "paid" && selectedUdhar.paid_date && (
               <div className="bg-emerald-50 p-4 rounded-2xl mb-6 text-center">
-                <p className="text-emerald-700 font-bold">✅ ادا شدہ تاریخ: {selectedUdhar.paid_date_urdu || selectedUdhar.paid_date}</p>
+                <p className="text-emerald-700 font-bold">✅ ادا شدہ تاریخ: {selectedUdhar.paid_date_urdu} • {selectedUdhar.paid_time}</p>
               </div>
             )}
 
@@ -825,7 +794,6 @@ function Udhaars({ onItemAdded, onClose }) {
             </div>
 
             <div className="flex gap-4 flex-wrap">
-              <button onClick={() => downloadUdhar(selectedUdhar)} className="flex-1 bg-gray-800 hover:bg-gray-900 text-white py-4 rounded-3xl font-bold text-lg transition-all">📥 ڈاؤن لوڈ بل</button>
               <button onClick={() => printUdhar(selectedUdhar)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-3xl font-bold text-lg transition-all">🖨️ پرنٹ بل</button>
               {selectedUdhar.status === "unpaid" ? (
                 <button onClick={() => payUdhar(selectedUdhar.customer_name)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-3xl font-bold text-lg transition-all">💰 ابھی ادا کریں</button>
