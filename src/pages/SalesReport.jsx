@@ -11,6 +11,8 @@ function SalesReport({ onClose }) {
   const [message, setMessage] = useState({ text: "", type: "" });
   const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -84,6 +86,20 @@ function SalesReport({ onClose }) {
       showMsg("📊 ایکسل فائل ڈاؤن لوڈ ہو رہی ہے", "success");
     } catch (err) {
       showMsg("ایکسل ڈاؤن لوڈ نہیں ہو سکی", "error");
+    }
+  };
+
+  // Handle Delete Report
+  const handleDeleteReport = async () => {
+    setDeleteError("");
+    try {
+      await axios.delete(`${API}/reports/${deleteId}`, getAuthHeader());
+      showMsg("✅ رپورٹ کامیابی سے حذف کر دی گئی", "success");
+      setDeleteId(null);
+      await fetchReports();
+    } catch (err) {
+      const errorMsg = err.response?.data?.detail || "حذف کرنے میں خرابی";
+      setDeleteError(errorMsg);
     }
   };
 
@@ -363,7 +379,7 @@ function SalesReport({ onClose }) {
     });
   };
 
-  // NEW: Print-based PDF generation (works perfectly with CSS)
+  // Print-based PDF generation
   const printPDF = async (report) => {
     setPrintGenerating(true);
     try {
@@ -382,19 +398,16 @@ function SalesReport({ onClose }) {
       const pieChartImage = await generatePieChartImage(topItems);
       const lineChartImage = await generateLineChartImage(allSales);
       
-      // Generate HTML content
       const htmlContent = generatePrintHTML(reportData, kpi, allSales, shopInfo, user, {
         barChart: barChartImage,
         pieChart: pieChartImage,
         lineChart: lineChartImage
       });
       
-      // Open new window for printing
       const printWindow = window.open('', '_blank');
       printWindow.document.write(htmlContent);
       printWindow.document.close();
       
-      // Wait for content to load then trigger print
       printWindow.onload = () => {
         setTimeout(() => {
           printWindow.print();
@@ -410,7 +423,7 @@ function SalesReport({ onClose }) {
     }
   };
 
-  // HTML for Print (CSS works perfectly in print)
+  // HTML for Print
   const generatePrintHTML = (report, kpi, sales, shop, user, charts) => {
     const totalQuantity = kpi.total_quantity || 0;
     const totalRevenue = kpi.total_revenue || 0;
@@ -462,24 +475,20 @@ function SalesReport({ onClose }) {
           line-height: 1.6;
         }
         
-        /* Print styles */
         @media print {
           body { margin: 0; padding: 15px; }
           .page-break { page-break-before: always; }
-          .no-break { page-break-inside: avoid; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         
         .container { width: 100%; }
         
-        /* Header */
         .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2C7DA0; padding-bottom: 20px; }
         .shop-name { font-size: 26px; font-weight: bold; color: #2C7DA0; margin-bottom: 8px; }
         .shop-address { color: #666666; font-size: 11px; }
         .report-title { font-size: 22px; font-weight: bold; color: #1e3a5f; margin: 15px 0 5px; }
         .report-date { color: #888888; font-size: 11px; }
         
-        /* KPI Cards */
         .kpi-grid { display: flex; flex-wrap: wrap; gap: 15px; margin: 25px 0; }
         .kpi-card { flex: 1 1 200px; color: #ffffff; padding: 15px; border-radius: 12px; text-align: center; }
         .kpi-card.blue { background: #2C7DA0; }
@@ -490,7 +499,6 @@ function SalesReport({ onClose }) {
         .kpi-label { font-size: 12px; opacity: 0.9; margin-bottom: 6px; }
         .kpi-value { font-size: 24px; font-weight: bold; }
         
-        /* Tables */
         .section-title { font-size: 18px; font-weight: bold; color: #2C7DA0; margin: 25px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #2C7DA0; }
         table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
         th { background: #2C7DA0; color: #ffffff; padding: 10px 8px; border: 1px solid #1a5a7a; }
@@ -498,7 +506,6 @@ function SalesReport({ onClose }) {
         tr:nth-child(even) { background: #f9f9f9; }
         .amount { font-weight: bold; color: #2C7DA0; }
         
-        /* Charts */
         .page-break { page-break-before: always; margin-top: 30px; }
         .chart-container { text-align: center; margin: 20px 0; padding: 20px; background: #ffffff; border-radius: 12px; }
         .chart-title { font-size: 20px; font-weight: bold; color: #2C7DA0; margin-bottom: 15px; }
@@ -506,13 +513,11 @@ function SalesReport({ onClose }) {
         .chart-image { text-align: center; margin: 20px 0; }
         .chart-image img { max-width: 100%; height: auto; border: 1px solid #dddddd; border-radius: 8px; }
         
-        /* Footer */
         .footer { text-align: center; margin-top: 40px; padding-top: 15px; border-top: 1px solid #dddddd; color: #999999; font-size: 10px; }
       </style>
     </head>
     <body>
       <div class="container">
-        <!-- Page 1: Header + KPIs + Top 5 Items -->
         <div class="header">
           <div class="shop-name">${shop.shop_name || "میرا اسٹور"}</div>
           <div class="shop-address">${shop.address || ""}</div>
@@ -550,7 +555,7 @@ function SalesReport({ onClose }) {
           </tbody>
         </table>
 
-        ${hasBarChart ? `<div class="page-break"><div class="chart-container"><div class="chart-title">📊 بار چارٹ: فروخت شدہ مقدار کا موازنہ</div><div class="chart-description">یہ بار چارٹ پانچ سب سے زیادہ فروخت ہونے والی اشیاء کی مقدار دکھاتا ہے۔ جتنا لمبا بار، اس آئٹم کی اتنی زیادہ فروخت ہوئی ہے۔</div><div class="chart-image"><img src="${charts.barChart}" alt="Bar Chart" /></div></div></div>` : ''}
+        ${hasBarChart ? `<div class="page-break"><div class="chart-container"><div class="chart-title">📊 بار چارٹ: فروخت شدہ مقدار کا موازنہ</div><div class="chart-description">یہ بار چارٹ پانچ سب سے زیادہ فروخت ہونے والی اشیاء کی مقدار دکھاتا ہے۔</div><div class="chart-image"><img src="${charts.barChart}" alt="Bar Chart" /></div></div></div>` : ''}
 
         ${hasPieChart ? `<div class="page-break"><div class="chart-container"><div class="chart-title">🥧 پائی چارٹ: فروخت میں حصہ داری</div><div class="chart-description">یہ پائی چارٹ ظاہر کرتا ہے کہ ہر آئٹم کا کل فروخت میں کتنا فیصد حصہ ہے۔</div><div class="chart-image"><img src="${charts.pieChart}" alt="Pie Chart" /></div></div></div>` : ''}
 
@@ -566,14 +571,7 @@ function SalesReport({ onClose }) {
   };
 
   const deleteReport = async (reportId) => {
-    if (!window.confirm("کیا آپ واقعی یہ رپورٹ حذف کرنا چاہتے ہیں؟")) return;
-    try {
-      await axios.delete(`${API}/reports/${reportId}`, getAuthHeader());
-      showMsg("🗑️ رپورٹ حذف کر دی گئی", "success");
-      await fetchReports();
-    } catch (err) {
-      showMsg("رپورٹ حذف نہیں ہو سکی", "error");
-    }
+    setDeleteId(reportId);
   };
 
   useEffect(() => {
@@ -586,8 +584,10 @@ function SalesReport({ onClose }) {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentReports = reports.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(reports.length / itemsPerPage);
+  
   return (
     <div className="relative min-h-screen bg-gray-50 p-3 md:p-6" dir="rtl">
+      {/* PDF Generation Loader */}
       {printGenerating && (
         <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center">
           <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
@@ -598,11 +598,33 @@ function SalesReport({ onClose }) {
         </div>
       )}
 
+      {/* Toast Message - FIXED: Shows full message */}
       {message.text && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl animate-slide-down text-sm md:text-base transition-all duration-300"
-          style={{ backgroundColor: message.type === 'success' ? '#10b981' : '#ef4444', color: 'white' }}>
+          style={{
+            backgroundColor: message.type === 'success' ? '#10b981' : '#ef4444',
+            color: 'white',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+          }}>
           <div className="flex items-center gap-2">
             <span className="text-lg">{message.type === 'success' ? '✅' : '❌'}</span>
+            <span className="font-urdu">{message.text}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[400] flex justify-center items-center p-4">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">⚠️</div>
+            <h3 className="text-xl font-bold mb-2">کیا آپ کو یقین ہے؟</h3>
+            <p className="text-gray-500 text-sm mb-6">یہ رپورٹ ہمیشہ کے لیے حذف ہو جائے گی۔</p>
+            {deleteError && <div className="mb-4 p-3 rounded-xl text-center bg-red-100 text-red-700 border border-red-400 text-sm">❌ {deleteError}</div>}
+            <div className="flex gap-3">
+              <button onClick={handleDeleteReport} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 text-sm transition-all">ہاں، حذف کریں</button>
+              <button onClick={() => { setDeleteId(null); setDeleteError(""); }} className="flex-1 bg-gray-100 text-gray-800 py-3 rounded-xl font-bold hover:bg-gray-200 text-sm transition-all">منسوخ</button>
+            </div>
           </div>
         </div>
       )}
@@ -728,6 +750,5 @@ function SalesReport({ onClose }) {
     </div>
   );
 }
-   
-export default SalesReport;
 
+export default SalesReport;
