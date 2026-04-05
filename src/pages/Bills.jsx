@@ -96,229 +96,6 @@ const payBill = async (customerName) => {
     setTimeout(() => setMessage({ text: "", type: "" }), 3000);
   }; 
 
-  const downloadBill = (bill) => {
-    try {
-      const htmlContent = `<!DOCTYPE html>
-      <html dir="rtl">
-      <head>
-        <meta charset="UTF-8">
-        <title>بل نمبر ${bill.bill_id}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: 'Arial', 'Tahoma', sans-serif;
-            padding: 50px;
-            line-height: 1.8;
-            background: #fff;
-            color: #333;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 20px;
-          }
-          .shop-name {
-            font-size: 28px;
-            font-weight: bold;
-            color: #1e40af;
-            margin-bottom: 10px;
-          }
-          .shop-address {
-            color: #666;
-            font-size: 14px;
-          }
-          .bill-info {
-            display: flex;
-            justify-content: space-between;
-            margin: 30px 0;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 12px;
-            flex-wrap: wrap;
-            gap: 15px;
-          }
-          .info-group {
-            text-align: center;
-            flex: 1;
-          }
-          .info-label {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 5px;
-          }
-          .info-value {
-            font-size: 16px;
-            font-weight: bold;
-            color: #333;
-          }
-          .items-table {
-            width: 100%;
-            margin: 30px 0;
-            border-collapse: collapse;
-          }
-          .items-table th,
-          .items-table td {
-            border: 1px solid #e5e7eb;
-            padding: 12px;
-            text-align: right;
-          }
-          .items-table th {
-            background: #f3f4f6;
-            font-weight: bold;
-          }
-          .total-section {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 12px;
-          }
-          .total-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            font-size: 16px;
-          }
-          .grand-total {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1e40af;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 2px solid #ddd;
-          }
-          .status {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-          }
-          .status-paid {
-            background: #d1fae5;
-            color: #065f46;
-          }
-          .status-unpaid {
-            background: #fee2e2;
-            color: #991b1b;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #999;
-            font-size: 12px;
-          }
-          @media print {
-            body { padding: 20px; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="shop-name">${shopInfo.shop_name || "میرا اسٹور"}</div>
-          <div class="shop-address">${shopInfo.address || ""}</div>
-          <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
-        </div>
-
-        <div class="bill-info">
-          <div class="info-group">
-            <div class="info-label">بل نمبر</div>
-            <div class="info-value">#${bill.bill_id}</div>
-          </div>
-          <div class="info-group">
-            <div class="info-label">کسٹمر</div>
-            <div class="info-value">${bill.customer_name}</div>
-          </div>
-          <div class="info-group">
-            <div class="info-label">تاریخ</div>
-            <div class="info-value">${bill.bill_day_name}، ${bill.bill_day} ${bill.bill_month} ${bill.bill_year}</div>
-          </div>
-          <div class="info-group">
-            <div class="info-label">وقت</div>
-            <div class="info-value">${bill.bill_time}</div>
-          </div>
-        </div>
-
-        ${bill.status === "paid" ? `
-        <div class="bill-info" style="background: #d1fae5;">
-          <div class="info-group">
-            <div class="info-label">ادا شدہ تاریخ</div>
-            <div class="info-value">${bill.bill_day_name}، ${bill.bill_day} ${bill.bill_month} ${bill.bill_year}</div>
-          </div>
-        </div>
-        ` : ''}
-
-        <table class="items-table">
-          <thead>
-            <tr>
-              <th>آئٹم</th>
-              <th>مقدار</th>
-              <th>فی اکائی</th>
-              <th>کل</th>
-              </tr>
-          </thead>
-          <tbody>
-            ${bill.items?.map(item => `
-              <tr>
-                <td>${item.item_name}</td>
-                <td>${item.quantity} ${item.requested_unit}</td>
-                <td>${item.unit_price}</td>
-                <td>${item.total_amount}</td>
-              </tr>
-            `).join('') || '<tr><td colspan="4">کوئی آئٹم نہیں</td><td></td><td></td><td></td></tr>'}
-          </tbody>
-        </table>
-
-        <div class="total-section">
-          <div class="total-row">
-            <span>سب ٹوٹل:</span>
-            <span>${bill.udhar_items_total || 0} روپے</span>
-          </div>
-          <div class="total-row">
-            <span>براہ راست جمع:</span>
-            <span class="text-green-600">+ ${bill.direct_addition || 0} روپے</span>
-          </div>
-          <div class="total-row">
-            <span>براہ راست کٹوتی:</span>
-            <span class="text-red-600">- ${bill.direct_deduction || 0} روپے</span>
-          </div>
-          <div class="grand-total">
-            <span>کل رقم:</span>
-            <span>${bill.effective_total || 0} روپے</span>
-          </div>
-          <div class="total-row" style="margin-top: 15px;">
-            <span>اسٹیٹس:</span>
-            <span class="status ${bill.status === 'paid' ? 'status-paid' : 'status-unpaid'}">
-              ${bill.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}
-            </span>
-          </div>
-        </div>
-
-        <div class="footer">
-          شکریہ! آپ کا اعتبار ہماری ترجیح ہے۔
-        </div>
-      </body>
-      </html>`;
-
-      const blob = new Blob([htmlContent], { type: 'application/pdf' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.href = url;
-      link.download = `Bill_${bill.customer_name}_${bill.bill_id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      showMsg("بل ڈاؤن لوڈ ہو رہا ہے...", "success");
-    } catch (error) {
-      console.error("Download error:", error);
-      showMsg("ڈاؤن لوڈ میں خرابی: " + error.message, "error");
-    }
-  };
-
   const printBill = (bill) => {
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
@@ -332,10 +109,10 @@ const payBill = async (customerName) => {
       </style>
       </head><body>
         <div class="header">
-          <h1>${shopInfo.shop_name}</h1>
-          <p>${shopInfo.address || ""}</p>
-          <p>مالک: ${shopInfo.owner_name}</p>
-        </div>
+  <h1>${shopInfo.shop_name || "میرا اسٹور"}</h1>
+  <p>${shopInfo.address || ""}</p>
+  <p>مالک: ${shopInfo.owner_name || user?.username || ""}</p>
+</div>
         <hr>
         <p><strong>کسٹمر:</strong> ${bill.customer_name}</p>
         <p><strong>بل نمبر:</strong> ${bill.bill_id}</p>
@@ -346,7 +123,7 @@ const payBill = async (customerName) => {
           <tbody>
             ${bill.items?.map(item => `
               <tr><td>${item.item_name}</td><td>${item.quantity} ${item.requested_unit}</td><td>${item.unit_price}</td><td>${item.total_amount}</td></tr>
-            `).join('') || '<tr><td colspan="4">کوئی آئٹم نہیں</td><td></td><td></td><td></td></tr>'}
+            `).join('') || '<tr><td colspan="4">کوئی آئٹم نہیں</td></tr>'}
           </tbody>
         </table>
         <p><strong>سب ٹوٹل:</strong> ${bill.udhar_items_total}</p>
@@ -531,8 +308,8 @@ const payBill = async (customerName) => {
                         <button onClick={() => setSelectedBill(bill)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">
                           👁️ دیکھیں
                         </button>
-                        <button onClick={() => downloadBill(bill)} className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">
-                          📥 ڈاؤن لوڈ
+                        <button onClick={() => printBill(bill)} className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">
+                          🖨️ پرنٹ
                         </button>
                         <button onClick={() => setDeleteId(bill.bill_id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">
                           🗑️ حذف
@@ -617,7 +394,12 @@ const payBill = async (customerName) => {
             <div className="border rounded-2xl overflow-hidden mb-8">
               <table className="w-full">
                 <thead className="bg-gray-50">
-                  <tr><th className="p-4 text-right">آئٹم</th><th className="p-4 text-center">مقدار</th><th className="p-4 text-center">فی اکائی</th><th className="p-4 text-right">کل</th></tr>
+                  <tr>
+                    <th className="p-4 text-right">آئٹم</th>
+                    <th className="p-4 text-center">مقدار</th>
+                    <th className="p-4 text-center">فی اکائی</th>
+                    <th className="p-4 text-right">کل</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {selectedBill.items?.map((item, i) => (
@@ -640,9 +422,6 @@ const payBill = async (customerName) => {
             </div>
 
             <div className="flex gap-4">
-              <button onClick={() => downloadBill(selectedBill)} className="flex-1 bg-gray-800 hover:bg-gray-900 text-white py-4 rounded-3xl font-bold text-lg transition-all">
-                📥 ڈاؤن لوڈ بل
-              </button>
               <button onClick={() => printBill(selectedBill)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-3xl font-bold text-lg transition-all">
                 🖨️ پرنٹ بل
               </button>

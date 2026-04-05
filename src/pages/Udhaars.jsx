@@ -20,7 +20,7 @@ function Udhaars({ onItemAdded, onClose }) {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   // Form states for direct addition/deduction
   const [showAdditionForm, setShowAdditionForm] = useState(false);
