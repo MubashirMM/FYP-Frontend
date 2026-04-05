@@ -29,7 +29,7 @@ function UdhaarItems({ onItemAdded, onClose }) {
   const fetchUdhaarItems = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/udhar-items`, getAuthHeader());
+      const res = await axios.get(`${API}/udhar-items/`, getAuthHeader());
       const data = Array.isArray(res.data) ? res.data : [];
       setUdhaarItems(data);
       setFilteredItems(data);
