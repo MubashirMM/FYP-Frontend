@@ -22,6 +22,7 @@ import Profile from "./pages/Profile";
 import Sales from "./pages/Sales";
 import BillItemHistory from "./pages/BillItemHistory";
 import SalesReport from "./pages/SalesReport";
+import ForecastReport from "./pages/ForecasttReport";
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
           <Route path="/sales" element={<Sales />} />
           <Route path="/bill-item-history" element={<BillItemHistory />} />
           <Route path="/sales-report" element={<SalesReport />} />
+           <Route path="forecast-report" element={<ForecastReport />} />
 
         </Route>
 

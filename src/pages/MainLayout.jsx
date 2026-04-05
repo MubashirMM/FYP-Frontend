@@ -57,6 +57,7 @@ function MainLayout() {
     { to: "/bill-item-history", icon: "📜", label: "بل آئٹم ہسٹری" },
     { to: "/shop", icon: "🛒", label: "اسٹور سیٹنگز" },
     { to: "/sales-report", icon: "📊", label: "فروخت رپورٹ" },
+      { to: "/forecast-report", icon: "🔮", label: "پیشن گوئی رپورٹ" },  
   ];
 
   return (
