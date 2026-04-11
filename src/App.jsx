@@ -11,7 +11,7 @@ import ResetPasswordConfirm from "./pages/ResetPasswordConfirm";
 import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "./pages/MainLayout";
 
-import MainPage from "./pages/MainPage";
+// import MainPage from "./pages/MainPage";
 import Items from "./pages/Items";
 import Bills from "./pages/Bills";
 import UdhaarItems from "./pages/UdhaarItems";
@@ -45,10 +45,10 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/main" element={<MainPage />} />
+          {/* <Route path="/main" element={<MainPage />} /> */}
           <Route path="/profile" element={<Profile />} />
           <Route path="/items" element={<Items />} />
-          <Route path="/bills" element={<Bills />} />
+          <Route path="/bills" element={<Bills />} /> 
           <Route path="/udhaar-items" element={<UdhaarItems />} />
           <Route path="/khata" element={<Udhaars />} />
           <Route path="/shop" element={<Shop />} />

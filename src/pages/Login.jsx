@@ -53,7 +53,7 @@ function Login() {
       setSuccessMessage("✅ لاگ ان کامیاب! مین پیج پر جا رہے ہیں...");
       
       setTimeout(() => {
-        navigate("/main");
+        navigate("/items");
       }, 2000);
       
     } catch (err) {

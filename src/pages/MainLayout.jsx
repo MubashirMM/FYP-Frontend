@@ -47,7 +47,7 @@ function MainLayout() {
 
   // Menu items list for easy management
   const menuItems = [
-    { to: "/main", icon: "🏠", label: "مین ڈیش بورڈ" },
+    // { to: "/main", icon: "🏠", label: "مین ڈیش بورڈ" },
     { to: "/items", icon: "📦", label: "آئٹمز مینجمنٹ" },
     { to: "/udhaar-items", icon: "📋", label: "اُدھار آئٹمز" },
     { to: "/bill-items", icon: "📝", label: "بل آئٹمز" },

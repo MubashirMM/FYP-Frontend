@@ -1,21 +1,23 @@
 # Stage 1: Build the application
-# Updated to Node 20 to satisfy Vite's requirements
-FROM node:20-alpine AS build
+# Use 'slim' instead of 'alpine' to avoid compatibility issues with native modules
+FROM node:20-slim AS build
 
-# Set working directory inside the container
 WORKDIR /work
 
-# Copy package files and install dependencies
 COPY package*.json ./
-COPY . .
 
-# Build the React app
+# Optional: sometimes needed for native builds in slim images
+# RUN apt-get update && apt-get install -y python3 make g++ 
+
+RUN npm install
+
+COPY . . 
+
 RUN npm run build
 
 # Stage 2: Serve with Nginx
 FROM nginx:stable-alpine
 
-# Copy the build output to Nginx
 COPY --from=build /work/dist /usr/share/nginx/html
 
 EXPOSE 80

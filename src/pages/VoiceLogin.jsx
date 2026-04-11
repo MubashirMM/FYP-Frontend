@@ -243,7 +243,7 @@ function VoiceLogin() {
       setSuccessMessage("✅ وائس لاگ ان کامیاب! مین پیج پر جا رہے ہیں...");
       
       setTimeout(() => {
-        navigate("/main");
+        navigate("/items");
       }, 2000);
 
     } catch (err) {
@@ -392,7 +392,7 @@ function VoiceLogin() {
 
           {/* Help Text */}
           <div className="text-center text-xs text-gray-500 font-urdu">
-            <p>💡提示: اپنی آواز واضح طور پر ریکارڈ کریں</p>
+            <p> اپنی آواز واضح طور پر ریکارڈ کریں</p>
             <p>اگر آواز مماثل نہ ہو تو مزید سیکنڈز کے لیے ریکارڈ کریں</p>
           </div>
 

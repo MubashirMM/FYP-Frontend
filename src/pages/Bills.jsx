@@ -70,7 +70,7 @@ const payBill = async (customerName) => {
     await axios.put(`${API}/bills/pay/${customerName}/`, {}, getAuthHeader());
     showMsg("✅ بل کامیابی سے ادا کر دیا گیا", "success");
     // Wait for fetch to complete before closing modal
-    await fetchBills(statusFilter === "all" ? null : statusFilter);
+    await fetchBills();
     setSelectedBill(null);
   } catch (err) {
     showMsg(err.response?.data?.detail || "ادائیگی ناکام", "error");
