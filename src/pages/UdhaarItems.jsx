@@ -247,6 +247,7 @@ function UdhaarItems({ onItemAdded, onClose }) {
         <th className="p-4 border-l font-bold text-gray-700 text-center text-base">فی بنیادی اکائی قیمت</th>
         <th className="p-4 border-l font-bold text-gray-700 text-center text-base">کل رقم</th>
         <th className="p-4 border-l font-bold text-gray-700 text-center text-base">تاریخ</th>
+        <th className="p-4 border-l font-bold text-gray-700 text-center text-base">وقت</th>
         <th className="p-4 text-center font-bold text-gray-700 text-base">انتخاب</th>
       </tr>
     </thead>
@@ -289,7 +290,9 @@ function UdhaarItems({ onItemAdded, onClose }) {
             <td className="p-4 border-l text-center text-sm text-gray-600">
               {item.udhar_day}/{item.udhar_month}/{item.udhar_year}
             </td>
-
+ <td className="p-4 border-l text-center text-sm text-gray-600 font-mono">
+              {item.udhar_time || "N/A"}
+            </td>
             <td className="p-4 text-center">
               <div className="flex justify-center gap-4">
                 <button 
