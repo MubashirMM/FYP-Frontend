@@ -171,7 +171,7 @@ function ForecastReport({ onClose }) {
             >
               {generating ? "⏳ جنریٹ ہو رہا ہے..." : "🔮 نیا پیشن گوئی رپورٹ"}
             </button>
-            <button onClick={onClose} disabled={generating} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all">✕ بند کریں</button>
+            {/* <button onClick={onClose} disabled={generating} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all">✕ بند کریں</button> */}
           </div>
         </div>
         <div className="bg-blue-50 p-4 rounded-2xl border border-blue-200">

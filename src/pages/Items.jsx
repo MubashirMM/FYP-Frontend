@@ -224,12 +224,12 @@ function Items({ onItemAdded, onClose }) {
                 >
                   + نیا آئٹم
                 </button>
-                <button 
+                {/* <button 
                   onClick={onClose} 
                   className="bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-xl font-bold text-sm"
                 >
                   ✕ بند کریں
-                </button>
+                </button> */}
               </div>
             </div>
           </div>
@@ -428,7 +428,7 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
             <input type="number" className="w-full p-3 border-2 rounded-xl text-right" value={formData.unit_price} onChange={e => setFormData({...formData, unit_price: e.target.value})} />
             {errors.unit_price && <p className="text-red-600 text-sm mt-1 text-right">{errors.unit_price}</p>}
           </div>
-          <div>
+          <div> 
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">موجودہ اسٹاک *</label>
             <input type="number" className="w-full p-3 border-2 rounded-xl text-right" value={formData.stock_quantity} onChange={e => setFormData({...formData, stock_quantity: e.target.value})} />
             {errors.stock_quantity && <p className="text-red-600 text-sm mt-1 text-right">{errors.stock_quantity}</p>}

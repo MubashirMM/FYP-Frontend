@@ -297,12 +297,12 @@ function Sales({ onClose }) {
                 صاف کریں
               </button>
             )}
-            <button 
+            {/* <button 
               onClick={onClose} 
               className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all"
             >
               ✕ بند کریں
-            </button>
+            </button> */}
           </div>
         </div>
 

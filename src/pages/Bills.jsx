@@ -260,9 +260,9 @@ const payBill = async (customerName) => {
             <button onClick={() => handleFilter("all")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "all" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>سب</button>
             <button onClick={() => handleFilter("unpaid")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "unpaid" ? "bg-rose-600 text-white" : "bg-gray-100"}`}>غیر ادا شدہ</button>
             <button onClick={() => handleFilter("paid")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "paid" ? "bg-emerald-600 text-white" : "bg-gray-100"}`}>ادا شدہ</button>
-            <button onClick={onClose} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all">
+            {/* <button onClick={onClose} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all">
               ✕ بند کریں
-            </button>
+            </button> */}
           </div>
         </div>
       </div>

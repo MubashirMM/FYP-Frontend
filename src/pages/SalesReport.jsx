@@ -639,7 +639,7 @@ function SalesReport({ onClose }) {
             <button onClick={generateReport} disabled={generating || printGenerating} className="px-6 py-3 rounded-3xl font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg disabled:opacity-50">
               {generating ? "⏳ جنریٹ ہو رہا ہے..." : "🔄 نیا رپورٹ جنریٹ کریں"}
             </button>
-            <button onClick={onClose} disabled={printGenerating} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all">✕ بند کریں</button>
+            {/* <button onClick={onClose} disabled={printGenerating} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all">✕ بند کریں</button> */}
           </div>
         </div>
         <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200">

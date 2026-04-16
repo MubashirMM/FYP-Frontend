@@ -224,12 +224,12 @@ function UdhaarItems({ onItemAdded, onClose }) {
                 >
                   <span>+</span> نیا اُدھار
                 </button>
-                <button 
+                {/* <button 
                   onClick={onClose} 
                   className="bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-xl font-bold text-sm"
                 >
                   ✕ بند کریں
-                </button>
+                </button> */}
               </div>
             </div>
           </div>

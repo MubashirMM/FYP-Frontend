@@ -50,7 +50,7 @@ function MainLayout() {
     // { to: "/main", icon: "🏠", label: "مین ڈیش بورڈ" },
     { to: "/items", icon: "📦", label: "آئٹمز مینجمنٹ" },
     { to: "/udhaar-items", icon: "📋", label: "اُدھار آئٹمز" },
-    { to: "/bill-items", icon: "📝", label: "بل آئٹمز" },
+    { to: "/bill-items", icon: "📝", label:"نقد آئٹمز" },
     { to: "/khata", icon: "📒", label: "کھاتہ کتاب" },
     { to: "/bills", icon: "📄", label: "بلز مینجمنٹ" },
     { to: "/sales", icon: "💰", label: "فروخت کی ریکارڈ" },
