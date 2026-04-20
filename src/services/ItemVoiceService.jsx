@@ -1,5 +1,5 @@
 // ItemVoiceService.js - Dedicated service for Item CRUD operations via voice commands
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance"; // ✅ Use axiosInstance instead
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -84,10 +84,8 @@ export class ItemVoiceService {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/items`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // ✅ Use axiosInstance - no need for manual token
+      const response = await axiosInstance.get(`/items`);
 
       const items = Array.isArray(response.data) ? response.data : response.data?.items || [];
       const foundItem = items.find(item => 
@@ -127,7 +125,7 @@ export class ItemVoiceService {
     return true;
   }
 
-  // ✏️ UPDATE ITEM (action: 4) - FIXED VERSION
+  // ✏️ UPDATE ITEM (action: 4)
   async handleUpdate(command, onShowEditForm, onOpenItemsPopup) {
     if (!command.item_name) {
       this.showMsg("❌ آئٹم کا نام نہیں ملا", "error");
@@ -135,10 +133,8 @@ export class ItemVoiceService {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/items`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // ✅ Use axiosInstance - no need for manual token
+      const response = await axiosInstance.get(`/items`);
 
       const items = Array.isArray(response.data) ? response.data : response.data?.items || [];
       const foundItem = items.find(item => 
@@ -207,10 +203,8 @@ export class ItemVoiceService {
   // Execute actual delete after confirmation
   async executeDelete(deleteId, itemName) {
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API}/items/${deleteId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // ✅ Use axiosInstance - no need for manual token
+      await axiosInstance.delete(`/items/${deleteId}`);
       
       this.showMsg(`✅ "${itemName}" کامیابی سے حذف کر دیا گیا`, "success");
       if (this.refreshItems) await this.refreshItems();
@@ -230,11 +224,9 @@ export class ItemVoiceService {
         return false;
       }
       
-      const token = localStorage.getItem("token");
-      await axios.patch(`${API}/items/${itemId}`, {
+      // ✅ Use axiosInstance - no need for manual token
+      await axiosInstance.patch(`/items/${itemId}`, {
         stock_quantity: newQuantity
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       
       this.showMsg(`✅ ${removeQuantity} ${unit} "${itemName}" میں سے نکال دیا گیا`, "success");

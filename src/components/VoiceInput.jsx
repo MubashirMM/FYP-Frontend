@@ -1,14 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 
-const API = import.meta.env.VITE_API_URL;
-
-function VoiceInput({ onCommandReceived, onClose }) {
+function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [audioSample, setAudioSample] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [editableText, setEditableText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -19,7 +16,7 @@ function VoiceInput({ onCommandReceived, onClose }) {
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Cleanup
+  // Cleanup on component unmount only
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -58,13 +55,24 @@ function VoiceInput({ onCommandReceived, onClose }) {
       mediaRecorderRef.current.onstop = async () => {
         try {
           const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+          
+          // Check if blob is too small (silent recording)
+          if (blob.size < 5000) {
+            setError("❌ کوئی آواز ریکارڈ نہیں ہوئی۔ براہ کرم دوبارہ بولیں");
+            setIsRecording(false);
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            return;
+          }
+          
           const wavBlob = await convertToWav(blob);
           
           const url = URL.createObjectURL(wavBlob);
           setAudioUrl(url);
           setAudioSample(wavBlob);
           
-          setMessage("✅ ریکارڈ محفوظ ہو گیا");
+          setMessage("✅ آواز ریکارڈ ہو گئی");
           setIsRecording(false);
           
           if (streamRef.current) {
@@ -102,7 +110,6 @@ function VoiceInput({ onCommandReceived, onClose }) {
       
       setError("");
       setMessage("");
-      setEditableText("");
       
       setMessage("📁 فائل اپ لوڈ ہو رہی ہے...");
       
@@ -119,8 +126,21 @@ function VoiceInput({ onCommandReceived, onClose }) {
     }
   }
 
-  // Convert voice to text
-  async function convertVoiceToText() {
+  // Convert blob to base64
+  const blobToBase64 = (blob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  // Process voice and silently fill form (no JSON display)
+  async function processVoiceToCommand() {
     if (!audioSample) {
       setError("براہ کرم پہلے آواز ریکارڈ کریں یا فائل اپ لوڈ کریں");
       return;
@@ -131,76 +151,79 @@ function VoiceInput({ onCommandReceived, onClose }) {
     setMessage("");
     
     try {
-      const formData = new FormData();
-      formData.append("audio", audioSample, "audio.wav");
+      // Convert blob to base64
+      const audio_base64 = await blobToBase64(audioSample);
       
-      setMessage("🎤 آواز کو متن میں تبدیل کیا جا رہا ہے...");
+      setMessage("🎤 آواز پروسیس ہو رہی ہے...");
       
-      const response = await axios.post(`${API}/voice-process`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+      // Send as JSON with base64
+      const response = await axiosInstance.post(`/voice-process-items`, {
+        audio_base64: audio_base64
       });
       
-      if (response.data && response.data.text) {
-        const detected = response.data.text;
-        setEditableText(detected);
-        setMessage(`✅ متن مل گیا`);
-      } else {
-        setError("❌ آواز میں کوئی واضح بات نہیں ہے");
+      console.log("Response:", response.data);
+      
+      // Check for invalid action (action: 0)
+      if (response.data && response.data.action === 0) {
+        // Show error message from backend
+        setError(`❌ ${response.data.message || "یہ کمانڈ یہاں پروسیس نہیں کی جا سکتی۔ براہ کرم صرف آئٹمز سے متعلق کمانڈ دیں۔"}`);
+        setMessage("");
+        setIsProcessing(false);
+        return;
       }
       
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.detail || "آواز پروسیس کرنے میں خرابی");
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
-  // Convert text to command and send to parent
-  async function convertTextToCommand() {
-    if (!editableText.trim()) {
-      setError("براہ کرم متن درج کریں");
-      return;
-    }
-    
-    setIsProcessing(true);
-    setError("");
-    
-    try {
-      setMessage("🤖 کمانڈ بنا رہے ہیں...");
+      // Check for error in response
+      if (response.data && response.data.error) {
+        setError(`❌ ${response.data.error}`);
+        setMessage("");
+        setIsProcessing(false);
+        return;
+      }
       
-      const response = await axios.post(`${API}/text-process`, {
-        text: editableText
-      });
-      
-      if (response.data) {
-        let commandJson;
-        try {
-          commandJson = typeof response.data.command === 'string' 
-            ? JSON.parse(response.data.command) 
-            : response.data.command;
-          
-          setMessage("✅ کمانڈ مل گئی");
-          
-          // Send command to parent page
-          if (onCommandReceived) {
-            onCommandReceived(commandJson);
-          }
-          
-          // Clear and close after successful command
-          setTimeout(() => {
-            clearAll();
-            setIsOpen(false);
-          }, 1500);
-          
-        } catch (e) {
-          setError("کمانڈ فارم میں خرابی");
+      // Success - silently send data to parent form (don't show JSON)
+      if (response.data && (response.data.action || response.data.items)) {
+        setMessage("✅ کمانڈ کامیابی سے پروسیس ہو گئی!");
+        
+        // Send command data to parent component (to fill form silently)
+        if (onCommandReceived) {
+          onCommandReceived(response.data);
         }
+        
+        // Clear the audio and close after success
+        setTimeout(() => {
+          clearAll();
+          setIsOpen(false);
+          if (onClose) onClose();
+        }, 1500);
+        
+      } else {
+        // Unknown response
+        setError("❌ کمانڈ سمجھ نہیں آئی۔ براہ کرم واضح بولے");
+        setMessage("");
       }
       
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.detail || "کمانڈ بنانے میں خرابی");
+      
+      // Handle different error types
+      if (err.response?.status === 401) {
+        setError("❌ آپ لاگ ان نہیں ہیں۔ براہ کرم پہلے لاگ ان کریں");
+      } else if (err.response?.data?.detail) {
+        const errorDetail = err.response.data.detail;
+        if (typeof errorDetail === 'object' && errorDetail.error) {
+          setError(`❌ ${errorDetail.error}`);
+        } else if (typeof errorDetail === 'object' && errorDetail.message) {
+          setError(`❌ ${errorDetail.message}`);
+        } else {
+          setError(`❌ ${errorDetail}`);
+        }
+      } else if (err.code === "ECONNABORTED") {
+        setError("❌ کنکشن ٹائم آؤٹ۔ انٹرنیٹ چیک کریں");
+      } else {
+        setError("❌ پروسیسنگ میں خرابی۔ براہ کرم دوبارہ کوشش کریں");
+      }
+      setMessage("");
+      
     } finally {
       setIsProcessing(false);
     }
@@ -210,9 +233,9 @@ function VoiceInput({ onCommandReceived, onClose }) {
   const clearAll = () => {
     setAudioSample(null);
     setAudioUrl(null);
-    setEditableText("");
     setMessage("");
     setError("");
+    setIsProcessing(false);
     if (audioRef.current) {
       audioRef.current.src = "";
     }
@@ -221,12 +244,32 @@ function VoiceInput({ onCommandReceived, onClose }) {
     }
   };
 
-  // Convert to WAV
+  // Convert to WAV with proper format (16kHz mono)
   async function convertToWav(input) {
-    const audioContext = new AudioContext();
+    const audioContext = new AudioContext({ sampleRate: 16000 });
     const arrayBuffer = await input.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    const wavBuffer = encodeWAV(audioBuffer);
+    
+    // Convert to mono
+    const numberOfChannels = 1;
+    const sampleRate = 16000;
+    const length = audioBuffer.length;
+    
+    const newBuffer = audioContext.createBuffer(numberOfChannels, length, sampleRate);
+    
+    if (audioBuffer.numberOfChannels === 1) {
+      newBuffer.copyToChannel(audioBuffer.getChannelData(0), 0);
+    } else {
+      const left = audioBuffer.getChannelData(0);
+      const right = audioBuffer.getChannelData(1);
+      const mono = new Float32Array(length);
+      for (let i = 0; i < length; i++) {
+        mono[i] = (left[i] + right[i]) / 2;
+      }
+      newBuffer.copyToChannel(mono, 0);
+    }
+    
+    const wavBuffer = encodeWAV(newBuffer);
     return new Blob([wavBuffer], { type: "audio/wav" });
   }
 
@@ -266,9 +309,19 @@ function VoiceInput({ onCommandReceived, onClose }) {
     return buffer;
   }
 
+  // Get feature title
+  const getFeatureTitle = () => {
+    switch(feature) {
+      case "items": return "📦 آئٹمز کمانڈ";
+      case "udhaar": return "💰 اُدھار کمانڈ";
+      case "bills": return "🧾 بل کمانڈ";
+      default: return "🎤 وائس کمانڈ";
+    }
+  };
+
   return (
     <>
-      {/* Toggle Button - Left side, vertical/horizontal design */}
+      {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`fixed bottom-6 left-0 z-50 bg-purple-600 hover:bg-purple-700 text-white transition-all duration-300 shadow-lg flex items-center gap-2 ${
@@ -294,21 +347,21 @@ function VoiceInput({ onCommandReceived, onClose }) {
         )}
       </button>
 
-      {/* Voice Input Panel - Slides from left */}
+      {/* Voice Input Panel */}
       <div
         className={`fixed bottom-20 left-0 z-40 bg-white rounded-r-2xl shadow-2xl transition-all duration-300 overflow-hidden ${
           isOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
         }`}
-        style={{ width: "380px", maxWidth: "85vw" }}
+        style={{ width: "400px", maxWidth: "85vw" }}
       >
         <div className="p-4">
           {/* Header */}
           <div className="text-center mb-3 pb-2 border-b">
-            <h3 className="text-md font-bold text-gray-800 font-urdu">🎤 وائس کمانڈ</h3>
+            <h3 className="text-md font-bold text-gray-800 font-urdu">{getFeatureTitle()}</h3>
             <p className="text-xs text-gray-500 font-urdu">اپنی آواز سے کمانڈ کریں</p>
           </div>
 
-          {/* Recording Section - Horizontal layout */}
+          {/* Recording Section */}
           <div className="flex items-center gap-2 mb-3">
             <button
               onClick={toggleRecording}
@@ -356,6 +409,7 @@ function VoiceInput({ onCommandReceived, onClose }) {
                 accept="audio/*"
                 onChange={handleFileUpload}
                 className="hidden"
+                disabled={isProcessing}
               />
               <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -365,75 +419,56 @@ function VoiceInput({ onCommandReceived, onClose }) {
             </label>
           </div>
 
-          {/* Audio Player (if recorded) */}
+          {/* Audio Player */}
           {audioSample && (
             <div className="mb-3">
               <audio ref={audioRef} controls src={audioUrl} className="w-full h-8 rounded-lg" />
             </div>
           )}
 
-          {/* Convert to Text Button */}
+          {/* Process Button */}
           {audioSample && (
             <button
-              onClick={convertVoiceToText}
+              onClick={processVoiceToCommand}
               disabled={isProcessing}
-              className="w-full bg-purple-600 text-white py-2 rounded-lg mb-3 text-sm font-urdu transition-all hover:bg-purple-700"
+              className={`w-full py-2 rounded-lg mb-3 text-sm font-urdu transition-all ${
+                isProcessing 
+                  ? "bg-gray-400 cursor-not-allowed" 
+                  : "bg-purple-600 hover:bg-purple-700 text-white"
+              }`}
             >
-              {isProcessing ? "⏳ پروسیسنگ..." : "🎤 آواز کو متن میں تبدیل کریں"}
+              {isProcessing ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>پروسیسنگ جاری ہے...</span>
+                </div>
+              ) : (
+                "🎤 کمانڈ پر عمل کریں"
+              )}
             </button>
           )}
 
-          {/* Text Area */}
-          <textarea
-            value={editableText}
-            onChange={(e) => setEditableText(e.target.value)}
-            placeholder="تبدیل شدہ متن یہاں ظاہر ہوگا..."
-            className="w-full p-3 border-2 border-gray-200 rounded-lg text-right font-urdu focus:outline-none focus:border-purple-500 text-sm min-h-[80px] mb-3"
-            dir="rtl"
-          />
-
-          {/* Action Buttons Row */}
-          {editableText && (
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={convertTextToCommand}
-                disabled={isProcessing}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-urdu transition-all hover:bg-blue-700"
-              >
-                {isProcessing ? "⏳ پروسیسنگ..." : "🤖 کمانڈ پر بھیجیں"}
-              </button>
-              <button
-                onClick={() => setEditableText("")}
-                className="px-4 bg-gray-500 text-white py-2 rounded-lg text-sm font-urdu transition-all hover:bg-gray-600"
-              >
-                صاف
-              </button>
-            </div>
-          )}
-
-          {/* Clear All Button */}
+          {/* Clear Button */}
           {audioSample && (
             <button
               onClick={clearAll}
-              className="w-full bg-gray-500 text-white py-2 rounded-lg text-sm font-urdu transition-all hover:bg-gray-600"
+              disabled={isProcessing}
+              className="w-full bg-gray-500 text-white py-2 rounded-lg text-sm font-urdu transition-all hover:bg-gray-600 disabled:bg-gray-300"
             >
               🔄 سب صاف کریں
             </button>
           )}
 
-          {/* Messages */}
-          {(message || error) && (
-            <div className="mt-3">
-              {message && (
-                <div className="p-2 bg-blue-100 border border-blue-400 text-blue-700 rounded text-right text-xs font-urdu">
-                  {message}
-                </div>
-              )}
-              {error && (
-                <div className="p-2 bg-red-100 border border-red-400 text-red-700 rounded text-right text-xs font-urdu">
-                  ❌ {error}
-                </div>
-              )}
+          {/* Messages - Only show status and errors, NOT JSON */}
+          {message && !error && (
+            <div className="mt-3 p-2 bg-blue-100 border border-blue-400 text-blue-700 rounded text-right text-xs font-urdu">
+              {message}
+            </div>
+          )}
+          
+          {error && (
+            <div className="mt-3 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-right text-xs font-urdu">
+              {error}
             </div>
           )}
 
