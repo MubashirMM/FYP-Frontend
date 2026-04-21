@@ -6,7 +6,7 @@ import { ItemVoiceService } from "../services/ItemVoiceService";
 const API = import.meta.env.VITE_API_URL;
 
 const ALLOWED_UNITS = [
-  "کلو", "گرام", "پاؤ", "چھٹانک", "سیر", "من", "بوری",
+  "کلو", "گرام", "پاؤ", "آدھا پاؤ", "چھٹانک", "سیر", "من", "بوری", "بوریاں",
   "لیٹر", "ملی لیٹر", "عدد", "درجن", "آدھا درجن",
   "پیکٹ", "ڈبہ", "بوتل", "کلوگرام"
 ];
@@ -49,7 +49,6 @@ function Items({ onItemAdded, onClose }) {
     }
   };
 
-  // Handle voice command from VoiceInput
   const handleVoiceCommand = async (commandJson) => {
     console.log("Voice command received on Items page:", commandJson);
     
@@ -57,25 +56,19 @@ function Items({ onItemAdded, onClose }) {
     
     await voiceService.processCommand(commandJson, {
       onShowAddForm: (formData) => {
-        console.log("onShowAddForm called with:", formData);
-        // Clear any existing currentItem and set autoFill data
         setCurrentItem(null);
         setAutoFillFormData(formData);
         setShowForm(true);
       },
       onShowDeleteConfirm: (confirmData) => {
-        console.log("onShowDeleteConfirm called with:", confirmData);
         setDeleteConfirm(confirmData);
       },
       onShowEditForm: (editData) => {
-        console.log("onShowEditForm called with:", editData);
-        // Clear autoFill and set current item for edit
         setAutoFillFormData(null);
         setCurrentItem(editData);
         setShowForm(true);
       },
       onSearch: (searchTerm) => {
-        console.log("onSearch called with:", searchTerm);
         setSearch(searchTerm);
         const filtered = items.filter(item => 
           item.item_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -84,21 +77,10 @@ function Items({ onItemAdded, onClose }) {
         setCurrentPage(1);
         setView("LIST");
       },
-      onShowAllItems: () => {
-        console.log("onShowAllItems called");
-        setSearch("");
-        setFilteredItems(items); 
-        setCurrentPage(1);
-        setView("LIST");
-      },
-      onOpenItemsPopup: () => {
-        console.log("onOpenItemsPopup called");
-        // Already on Items page, no need to open popup
-      }
+      onOpenItemsPopup: () => {}
     });
   };
 
-  // Real-time search
   const handleSearchChange = (e) => {
     const searchTerm = e.target.value;
     setSearch(searchTerm);
@@ -169,7 +151,6 @@ function Items({ onItemAdded, onClose }) {
   const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
 
-  // Determine which data to pass to ItemForm
   const getFormInitialData = () => {
     if (currentItem) return currentItem;
     if (autoFillFormData) return autoFillFormData;
@@ -184,10 +165,8 @@ function Items({ onItemAdded, onClose }) {
 
   return (
     <div className="relative">
-      {/* Voice Input Component - Floating Button */}
-      <VoiceInput onCommandReceived={handleVoiceCommand} />
+      <VoiceInput onCommandReceived={handleVoiceCommand} feature="items" />
 
-      {/* Message Toast */}
       {message.text && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl"
           style={{
@@ -200,7 +179,6 @@ function Items({ onItemAdded, onClose }) {
 
       {!showForm ? (
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Header */}
           <div className="p-5 border-b bg-gradient-to-r from-purple-50 to-white">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div>
@@ -215,7 +193,7 @@ function Items({ onItemAdded, onClose }) {
                     placeholder="🔍 آئٹم تلاش کریں..." 
                     value={search} 
                     onChange={handleSearchChange}
-                    className="w-full md:w-80 p-3 pr-10 border-2 border-gray-200 rounded-xl bg-white focus:border-purple-500 focus:outline-none text-sm font-urdu"
+                    className="w-full md:w-80 p-3 border-2 border-gray-200 rounded-xl bg-white focus:border-purple-500 focus:outline-none text-sm font-urdu"
                   />
                 </div>
                 <button 
@@ -224,17 +202,10 @@ function Items({ onItemAdded, onClose }) {
                 >
                   + نیا آئٹم
                 </button>
-                {/* <button 
-                  onClick={onClose} 
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-xl font-bold text-sm"
-                >
-                  ✕ بند کریں
-                </button> */}
               </div>
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-right">
               <thead className="bg-gray-100 border-b sticky top-0">
@@ -254,8 +225,8 @@ function Items({ onItemAdded, onClose }) {
                         <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
                         <span>ڈیٹا لوڈ ہو رہا ہے...</span>
                       </div>
-                     </td>
-                   </tr>
+                    </td>
+                  </tr>
                 ) : currentItems.length > 0 ? (
                   currentItems.map((item) => (
                     <tr key={item.item_id} className="border-b hover:bg-purple-50/50">
@@ -275,8 +246,23 @@ function Items({ onItemAdded, onClose }) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="p-16 text-center text-gray-500">
-                      کوئی ریکارڈ موجود نہیں ہے۔
+                    <td colSpan="5" className="p-16 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">📦</div>
+                        <p className="text-gray-500 text-lg font-medium">
+                          {search ? `"${search}" کے نام سے کوئی آئٹم نہیں ملا` : "کوئی آئٹم موجود نہیں ہے"}
+                        </p>
+                        {search && (
+                          <button onClick={() => { setSearch(""); fetchItems(); }} className="text-purple-600 hover:text-purple-700 font-bold underline">
+                            تمام آئٹمز دیکھیں
+                          </button>
+                        )}
+                        {!search && items.length === 0 && (
+                          <button onClick={handleAddNew} className="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all">
+                            + نیا آئٹم شامل کریں
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -284,14 +270,13 @@ function Items({ onItemAdded, onClose }) {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
+          {totalPages > 1 && currentItems.length > 0 && (
             <div className="p-4 flex justify-center gap-2 bg-gray-50 border-t">
-              <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-3 py-1 rounded-lg border bg-white">←</button>
+              <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50">←</button>
               {[...Array(totalPages)].map((_, i) => (
                 <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 rounded-lg border ${currentPage === i + 1 ? 'bg-purple-600 text-white' : 'bg-white'}`}>{i + 1}</button>
               ))}
-              <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="px-3 py-1 rounded-lg border bg-white">→</button>
+              <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50">→</button>
             </div>
           )}
         </div>
@@ -305,7 +290,6 @@ function Items({ onItemAdded, onClose }) {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/70 z-[200] flex justify-center items-center p-4">
           <div className="bg-white p-6 rounded-2xl max-w-sm w-full text-center">
@@ -324,16 +308,22 @@ function Items({ onItemAdded, onClose }) {
   );
 }
 
-// ItemForm Component
+// ============================================
+// ItemForm Component - COMPLETELY FIXED
+// No scrolling, text fully visible, 2-column layout
+// ============================================
 function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
   const [formData, setFormData] = useState({
-    item_name: "", item_unit: "", custom_unit: "", unit_price: "", stock_quantity: ""
+    item_name: "", 
+    item_unit: "", 
+    custom_unit: "", 
+    unit_price: "", 
+    stock_quantity: ""
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    console.log("ItemForm initialData received:", initialData);
     if (initialData) {
       setFormData({
         item_name: initialData.item_name || "",
@@ -343,9 +333,12 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
         stock_quantity: initialData.stock_quantity || ""
       });
     } else {
-      // Reset form when no initialData
       setFormData({
-        item_name: "", item_unit: "", custom_unit: "", unit_price: "", stock_quantity: ""
+        item_name: "", 
+        item_unit: "", 
+        custom_unit: "", 
+        unit_price: "", 
+        stock_quantity: ""
       });
     }
   }, [initialData]);
@@ -394,52 +387,141 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6 max-w-2xl mx-auto">
+    <div className="bg-white rounded-2xl shadow-xl p-6 max-w-3xl mx-auto">
       <h3 className="text-2xl font-bold mb-6 border-r-4 border-purple-600 pr-3 text-right">
         {mode === "ADD" ? "➕ نیا آئٹم شامل کریں" : "✏️ آئٹم کی ترمیم کریں"}
       </h3>
+      
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* ITEM NAME - Full width, proper height, no scroll */}
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2 text-right">آئٹم کا نام *</label>
-          <input className={`w-full p-3 border-2 rounded-xl text-right ${errors.item_name ? 'border-red-500' : 'border-gray-200'}`} value={formData.item_name} onChange={e => setFormData({...formData, item_name: e.target.value})} />
+          <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
+            آئٹم کا نام <span className="text-red-500">*</span>
+          </label>
+          <input 
+            type="text"
+            className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 transition-colors ${
+              errors.item_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
+            }`}
+            style={{
+              height: "auto",
+              minHeight: "48px",
+              lineHeight: "normal",
+              overflow: "visible"
+            }}
+            value={formData.item_name} 
+            onChange={e => setFormData({...formData, item_name: e.target.value})}
+            placeholder="مثال: باسمتی چاول"
+          />
           {errors.item_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_name}</p>}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* UNIT SELECTION & CUSTOM UNIT - IN SAME ROW (2 columns) */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2 text-right">اکائی *</label>
-            <select className="w-full p-3 border-2 rounded-xl text-right" value={formData.item_unit} onChange={e => setFormData({...formData, item_unit: e.target.value})}>
+            <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
+              اکائی <span className="text-red-500">*</span>
+            </label>
+            <select 
+              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
+                errors.item_unit ? 'border-red-500' : 'border-gray-200'
+              }`}
+              style={{
+                height: "68px",
+                lineHeight: "normal"
+              }}
+              value={formData.item_unit} 
+              onChange={e => setFormData({...formData, item_unit: e.target.value})}
+            >
               <option value="">منتخب کریں</option>
               {ALLOWED_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-              <option value="__custom">✨ دیگر</option>
+              <option value="__custom">✨ دیگر (اپنی اکائی لکھیں)</option>
             </select>
+            {errors.item_unit && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_unit}</p>}
           </div>
+
+          {/* Custom Unit Field - Same row when selected */}
           {formData.item_unit === "__custom" && (
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 text-right">اکائی کا نام *</label>
-              <input className="w-full p-3 border-2 rounded-xl text-right" value={formData.custom_unit} onChange={e => setFormData({...formData, custom_unit: e.target.value})} />
+              <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
+                اپنی اکائی <span className="text-red-500">*</span>
+              </label>
+              <input 
+                type="text"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500"
+                style={{
+                  height: "68px",
+                  lineHeight: "normal"
+                }}
+                value={formData.custom_unit} 
+                onChange={e => setFormData({...formData, custom_unit: e.target.value})}
+                placeholder="مثال: گٹھلی"
+              />
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* PRICE & STOCK QUANTITY - IN SAME ROW (2 columns) */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2 text-right">قیمت فی اکائی (PKR) *</label>
-            <input type="number" className="w-full p-3 border-2 rounded-xl text-right" value={formData.unit_price} onChange={e => setFormData({...formData, unit_price: e.target.value})} />
+            <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
+              قیمت فی اکائی (PKR) <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="number"
+              step="0.01"
+              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
+                errors.unit_price ? 'border-red-500' : 'border-gray-200'
+              }`}
+              style={{
+                height: "48px",
+                lineHeight: "normal"
+              }}
+              value={formData.unit_price} 
+              onChange={e => setFormData({...formData, unit_price: e.target.value})}
+              placeholder="مثال: 2500"
+            />
             {errors.unit_price && <p className="text-red-600 text-sm mt-1 text-right">{errors.unit_price}</p>}
           </div>
-          <div> 
-            <label className="block text-sm font-bold text-gray-700 mb-2 text-right">موجودہ اسٹاک *</label>
-            <input type="number" className="w-full p-3 border-2 rounded-xl text-right" value={formData.stock_quantity} onChange={e => setFormData({...formData, stock_quantity: e.target.value})} />
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
+              موجودہ اسٹاک <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="number"
+              step="0.01"
+              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
+                errors.stock_quantity ? 'border-red-500' : 'border-gray-200'
+              }`}
+              style={{
+                height: "48px",
+                lineHeight: "normal"
+              }}
+              value={formData.stock_quantity} 
+              onChange={e => setFormData({...formData, stock_quantity: e.target.value})}
+              placeholder="مثال: 50"
+            />
             {errors.stock_quantity && <p className="text-red-600 text-sm mt-1 text-right">{errors.stock_quantity}</p>}
           </div>
         </div>
 
-        <div className="flex gap-3 pt-4">
-          <button type="submit" disabled={isSubmitting} className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">
+        {/* Buttons */}
+        <div className="flex gap-3 pt-6">
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-bold transition-colors disabled:bg-gray-400 text-base"
+          >
             {isSubmitting ? "محفوظ ہو رہا ہے..." : "💾 محفوظ کریں"}
           </button>
-          <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">✕ منسوخ کریں</button>
+          <button 
+            type="button" 
+            onClick={onCancel} 
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-colors text-base"
+          >
+            ✕ منسوخ کریں
+          </button>
         </div>
       </form>
     </div>

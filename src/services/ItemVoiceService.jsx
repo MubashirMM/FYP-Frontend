@@ -1,7 +1,5 @@
 // ItemVoiceService.js - Dedicated service for Item CRUD operations via voice commands
-import axiosInstance from "../utils/axiosInstance"; // ✅ Use axiosInstance instead
-
-const API = import.meta.env.VITE_API_URL;
+import axiosInstance from "../utils/axiosInstance";
 
 export class ItemVoiceService {
   constructor(showMsgCallback, refreshItemsCallback) {
@@ -13,12 +11,17 @@ export class ItemVoiceService {
   async processCommand(commandJson, callbacks) {
     console.log("ItemVoiceService processing:", commandJson);
 
+    // Check for invalid action (action: 0)
+    if (commandJson.action === 0) {
+      this.showMsg(commandJson.message || "❌ یہ کمانڈ یہاں پروسیس نہیں کی جا سکتی۔ براہ کرم صرف آئٹمز سے متعلق کمانڈ دیں۔", "error");
+      return false;
+    }
+
     const {
       onShowAddForm,
       onShowDeleteConfirm,
       onShowEditForm,
       onSearch,
-      onShowAllItems,
       onOpenItemsPopup
     } = callbacks;
 
@@ -31,8 +34,6 @@ export class ItemVoiceService {
         return this.handleSearch(commandJson, onSearch, onOpenItemsPopup);
       case 4:
         return this.handleUpdate(commandJson, onShowEditForm, onOpenItemsPopup);
-      case 5:
-        return this.handleReadAll(onShowAllItems, onOpenItemsPopup);
       default:
         this.showMsg("❌ نامعلوم کمانڈ", "error");
         return false;
@@ -42,12 +43,12 @@ export class ItemVoiceService {
   // ✅ ADD ITEM (action: 1)
   async handleAdd(command, onShowAddForm, onOpenItemsPopup) {
     if (!command.item_name) {
-      this.showMsg("❌ آئٹم کا نام نہیں ملا", "error");
+      this.showMsg("❌ آئٹم کا نام نہیں ملا۔ براہ کرم واضح بولیں", "error");
       return false;
     }
 
     const ALLOWED_UNITS = [
-      "کلو", "گرام", "پاؤ", "چھٹانک", "سیر", "من", "بوری",
+      "کلو", "گرام", "پاؤ", "آدھا پاؤ", "چھٹانک", "سیر", "من", "بوری", "بوریاں",
       "لیٹر", "ملی لیٹر", "عدد", "درجن", "آدھا درجن",
       "پیکٹ", "ڈبہ", "بوتل", "کلوگرام"
     ];
@@ -67,7 +68,7 @@ export class ItemVoiceService {
       item_unit: selectedUnit,
       custom_unit: customUnit,
       unit_price: command.amount || "",
-      stock_quantity: command.quantity || command.stock_quantity || 0,
+      stock_quantity: command.quantity || 0,
       mode: "ADD"
     };
 
@@ -79,15 +80,14 @@ export class ItemVoiceService {
   // ❌ DELETE ITEM (action: 2)
   async handleDelete(command, onShowDeleteConfirm, onOpenItemsPopup) {
     if (!command.item_name) {
-      this.showMsg("❌ آئٹم کا نام نہیں ملا", "error");
+      this.showMsg("❌ آئٹم کا نام نہیں ملا۔ براہ کرم واضح بولیں", "error");
       return false;
     }
 
     try {
-      // ✅ Use axiosInstance - no need for manual token
       const response = await axiosInstance.get(`/items`);
-
       const items = Array.isArray(response.data) ? response.data : response.data?.items || [];
+      
       const foundItem = items.find(item => 
         item.item_name.toLowerCase() === command.item_name.toLowerCase()
       );
@@ -101,8 +101,7 @@ export class ItemVoiceService {
         id: foundItem.item_id,
         name: foundItem.item_name,
         unit: foundItem.item_unit,
-        quantity: foundItem.stock_quantity,
-        deleteQuantity: command.quantity || null
+        quantity: foundItem.stock_quantity
       });
 
       onOpenItemsPopup();
@@ -122,6 +121,7 @@ export class ItemVoiceService {
 
     onSearch(command.item_name);
     onOpenItemsPopup();
+    this.showMsg(`🔍 "${command.item_name}" تلاش کیا جا رہا ہے...`, "success");
     return true;
   }
 
@@ -133,10 +133,9 @@ export class ItemVoiceService {
     }
 
     try {
-      // ✅ Use axiosInstance - no need for manual token
       const response = await axiosInstance.get(`/items`);
-
       const items = Array.isArray(response.data) ? response.data : response.data?.items || [];
+      
       const foundItem = items.find(item => 
         item.item_name.toLowerCase() === command.item_name.toLowerCase()
       );
@@ -147,7 +146,7 @@ export class ItemVoiceService {
       }
 
       const ALLOWED_UNITS = [
-        "کلو", "گرام", "پاؤ", "چھٹانک", "سیر", "من", "بوری",
+        "کلو", "گرام", "پاؤ", "آدھا پاؤ", "چھٹانک", "سیر", "من", "بوری", "بوریاں",
         "لیٹر", "ملی لیٹر", "عدد", "درجن", "آدھا درجن",
         "پیکٹ", "ڈبہ", "بوتل", "کلوگرام"
       ];
@@ -165,18 +164,22 @@ export class ItemVoiceService {
       // Calculate new quantity properly
       let newQuantity = foundItem.stock_quantity;
       if (updateFields.new_quantity !== null && updateFields.new_quantity !== undefined) {
-        // If it's a relative change (negative for decrease, positive for increase)
         if (updateFields.new_quantity < 0) {
           newQuantity = foundItem.stock_quantity + updateFields.new_quantity;
         } else {
-          // Absolute value
           newQuantity = updateFields.new_quantity;
         }
       }
       
+      // Handle name update
+      let newItemName = command.item_name;
+      if (updateFields.new_name) {
+        newItemName = updateFields.new_name;
+      }
+      
       const editData = {
         item_id: foundItem.item_id,
-        item_name: command.item_name,
+        item_name: newItemName,
         item_unit: updateFields.new_unit || selectedUnit,
         custom_unit: (updateFields.new_unit && !ALLOWED_UNITS.includes(updateFields.new_unit)) ? updateFields.new_unit : customUnit,
         unit_price: updateFields.new_price || command.amount || foundItem.unit_price,
@@ -193,43 +196,11 @@ export class ItemVoiceService {
     }
   }
 
-  // 📋 READ ALL ITEMS (action: 5)
-  async handleReadAll(onShowAllItems, onOpenItemsPopup) {
-    onShowAllItems();
-    onOpenItemsPopup();
-    return true;
-  }
-
   // Execute actual delete after confirmation
   async executeDelete(deleteId, itemName) {
     try {
-      // ✅ Use axiosInstance - no need for manual token
       await axiosInstance.delete(`/items/${deleteId}`);
-      
       this.showMsg(`✅ "${itemName}" کامیابی سے حذف کر دیا گیا`, "success");
-      if (this.refreshItems) await this.refreshItems();
-      return true;
-    } catch (err) {
-      this.showMsg(err.response?.data?.detail || "حذف کرنے میں خرابی", "error");
-      return false;
-    }
-  }
-
-  // Execute partial delete (remove specific quantity)
-  async executePartialDelete(itemId, itemName, currentQuantity, removeQuantity, unit) {
-    try {
-      const newQuantity = currentQuantity - removeQuantity;
-      if (newQuantity < 0) {
-        this.showMsg(`❌ صرف ${currentQuantity} ${unit} باقی ہے`, "error");
-        return false;
-      }
-      
-      // ✅ Use axiosInstance - no need for manual token
-      await axiosInstance.patch(`/items/${itemId}`, {
-        stock_quantity: newQuantity
-      });
-      
-      this.showMsg(`✅ ${removeQuantity} ${unit} "${itemName}" میں سے نکال دیا گیا`, "success");
       if (this.refreshItems) await this.refreshItems();
       return true;
     } catch (err) {
