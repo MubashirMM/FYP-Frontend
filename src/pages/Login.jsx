@@ -114,7 +114,7 @@ function Login() {
               <input
                 type="email"
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-right font-urdu focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all placeholder:text-right"
-                placeholder="example@email.com" 
+                placeholder="ای میل درج کریں" 
                 value={form.username}
                 autoComplete="off"
                 onChange={(e) => setForm({ ...form, username: e.target.value })}

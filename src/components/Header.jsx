@@ -16,27 +16,21 @@ function Header({ user, isAuthenticated, onLogout }) {
     <header className="bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 text-white shadow-lg sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          {/* Logo and Store Name */}
-          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <span className="text-2xl">🏪</span>
-            </div>
-            <span className="text-xl font-bold hidden sm:inline font-urdu">میرا اسٹور</span>
-          </Link>
-
-          {/* Desktop Navigation */}
+          {/* Left Side - Navigation Links */}
           <div className="hidden md:flex items-center gap-2">
             {!isAuthenticated ? (
               <>
-                <Link to="/login" className="px-4 py-2 rounded-lg hover:bg-white/20 transition-colors font-urdu">
+                <Link to="/login" className="px-4 py-2 rounded-lg hover:underline transition-all font-urdu">
                   لاگ ان
                 </Link>
-                <Link to="/register" className="px-4 py-2 rounded-lg hover:bg-white/20 transition-colors font-urdu">
+                <span className="text-gray-300">|</span>
+                <Link to="/register" className="px-4 py-2 rounded-lg hover:underline transition-all font-urdu">
                   رجسٹر
                 </Link>
+                <span className="text-gray-300">|</span>
                 <Link 
                   to="/voice-login" 
-                  className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors font-urdu flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg hover:underline transition-all font-urdu flex items-center gap-2"
                 >
                   <span>🎤</span> وائس لاگ ان
                 </Link>
@@ -45,10 +39,11 @@ function Header({ user, isAuthenticated, onLogout }) {
               <div className="flex items-center gap-4">
                 <Link 
                   to="/voice-samples-form" 
-                  className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm flex items-center gap-2 font-urdu"
+                  className="px-3 py-2 rounded-lg hover:underline transition-all text-sm flex items-center gap-2 font-urdu"
                 >
                   <span>🎙️</span> وائس رجسٹر
                 </Link>
+                <span className="text-gray-300">|</span>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
                     {user?.username?.charAt(0).toUpperCase() || "👤"}
@@ -57,7 +52,7 @@ function Header({ user, isAuthenticated, onLogout }) {
                   <span className="text-gray-300">|</span>
                   <button 
                     onClick={handleLogout} 
-                    className="text-sm hover:text-purple-200 transition-colors font-urdu flex items-center gap-1"
+                    className="text-sm hover:underline transition-all font-urdu flex items-center gap-1"
                   >
                     <span>🚪</span> لاگ آؤٹ
                   </button>
@@ -65,6 +60,14 @@ function Header({ user, isAuthenticated, onLogout }) {
               </div>
             )}
           </div>
+
+          {/* Right Side - Logo and Store Name */}
+          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+              <span className="text-2xl">🏪</span>
+            </div>
+            <span className="text-xl font-bold hidden sm:inline font-urdu">میرا اسٹور</span>
+          </Link>
 
           {/* Mobile Menu Button */}
           <button 
