@@ -1,6 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -10,6 +12,7 @@ function ForgotPassword() {
   const navigate = useNavigate();
   
   const API = import.meta.env.VITE_API_URL;
+  const isAuthenticated = !!localStorage.getItem("token");
 
   const validateEmail = () => {
     if (!email.trim()) {
@@ -45,10 +48,8 @@ function ForgotPassword() {
       
       setSuccessMessage(res.data["پیغام"] || "✅ ری سیٹ کوڈ آپ کی ای میل پر بھیج دیا گیا ہے!");
       
-      // Save email in localStorage so ResetPasswordConfirm can use it
       localStorage.setItem("reset_email", email);
       
-      // Navigate to reset page after 2 seconds
       setTimeout(() => {
         navigate("/reset-password-confirm");
       }, 2000);
@@ -60,67 +61,75 @@ function ForgotPassword() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6 font-urdu">
-          پاس ورڈ ری سیٹ کریں
-        </h2>
-        
-        <p className="text-center text-gray-600 mb-6 font-urdu">
-          اپنا ای میل درج کریں، ہم آپ کو پاس ورڈ ری سیٹ کرنے کا کوڈ بھیجیں گے
-        </p>
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-right">
-            ❌ {error}
-          </div>
-        )}
-        
-        {successMessage && (
-          <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-right animate-pulse">
-            {successMessage}
-            <p className="text-sm mt-1">ری سیٹ پیج پر جا رہے ہیں...</p>
-          </div>
-        )}
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
 
-        <form onSubmit={handleEmailSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-urdu mb-2 text-right">
-              ای میل
-            </label>
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
+      <Header isAuthenticated={isAuthenticated} user={null} onLogout={handleLogout} />
+      
+      <main className="flex-1 flex flex-col items-center justify-center p-4">
+        {/* Forgot Password Card */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+          <h2 className="text-xl font-bold text-center text-gray-800 mb-3 font-urdu">
+            پاس ورڈ ری سیٹ کریں
+          </h2>
+          
+          <p className="text-center text-gray-500 text-xs mb-4 font-urdu">
+            اپنا ای میل درج کریں، ہم آپ کو ری سیٹ کوڈ بھیجیں گے
+          </p>
+          
+          {error && (
+            <div className="mb-3 p-2 bg-red-100 border border-red-400 text-red-700 rounded-lg text-right text-sm font-urdu">
+              ❌ {error}
+            </div>
+          )}
+          
+          {successMessage && (
+            <div className="mb-3 p-2 bg-green-100 border border-green-400 text-green-700 rounded-lg text-right animate-pulse text-sm font-urdu">
+              ✅ {successMessage}
+              <p className="text-xs mt-1">ری سیٹ پیج پر جا رہے ہیں...</p>
+            </div>
+          )}
+
+          <form onSubmit={handleEmailSubmit} className="space-y-4">
             <input
               type="email"
-              placeholder="example@email.com"
+              placeholder="اپنا ای میل درج کریں"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="off"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-urdu focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg text-right font-urdu focus:outline-none focus:border-purple-500 text-sm"
             />
-          </div>
-          
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-urdu text-lg font-semibold hover:bg-purple-700 transition-colors disabled:bg-purple-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>کوڈ بھیجا جا رہا ہے...</span>
-              </>
-            ) : (
-              "ری سیٹ کوڈ بھیجیں"
-            )}
-          </button>
-        </form>
-        
-        <div className="mt-6 text-center">
-          <Link to="/login" className="text-purple-600 hover:text-purple-700 font-urdu">
+            
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-lg font-urdu text-base font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>کوڈ بھیجا جا رہا ہے...</span>
+                </>
+              ) : (
+                "ری سیٹ کوڈ بھیجیں"
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* Links Section - Outside the card */}
+        <div className="mt-4 text-center">
+          <Link to="/login" className="text-purple-600 hover:text-purple-700 font-urdu text-sm transition-all duration-200 hover:underline underline-offset-2">
             ← واپس لاگ ان پر جائیں
           </Link>
         </div>
-      </div>
+      </main>
+      
+      <Footer isAuthenticated={isAuthenticated} />
     </div>
   );
 }
