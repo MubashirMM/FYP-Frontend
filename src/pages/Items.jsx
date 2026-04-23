@@ -164,7 +164,7 @@ function Items({ onItemAdded, onClose }) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen">
       <VoiceInput onCommandReceived={handleVoiceCommand} feature="items" />
 
       {message.text && (
@@ -193,7 +193,7 @@ function Items({ onItemAdded, onClose }) {
                     placeholder="🔍 آئٹم تلاش کریں..." 
                     value={search} 
                     onChange={handleSearchChange}
-                    className="w-full md:w-80 p-3 border-2 border-gray-200 rounded-xl bg-white focus:border-purple-500 focus:outline-none text-sm font-urdu"
+                    className="w-full md:w-80 p-3 border-2 border-gray-200 rounded-xl bg-white focus:border-purple-500 focus:outline-none text-sm font-urdu text-right"
                   />
                 </div>
                 <button 
@@ -206,7 +206,8 @@ function Items({ onItemAdded, onClose }) {
             </div>
           </div>
 
-          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          {/* Table container - removed max-h limit for better spacing */}
+          <div className="overflow-x-auto">
             <table className="w-full text-right">
               <thead className="bg-gray-100 border-b sticky top-0">
                 <tr>
@@ -230,8 +231,8 @@ function Items({ onItemAdded, onClose }) {
                 ) : currentItems.length > 0 ? (
                   currentItems.map((item) => (
                     <tr key={item.item_id} className="border-b hover:bg-purple-50/50">
-                      <td className="p-4 border-l font-bold text-gray-800">{item.item_name}</td>
-                      <td className="p-4 border-l text-gray-600">{item.item_unit}</td>
+                      <td className="p-4 border-l font-bold text-gray-800 text-right">{item.item_name}</td>
+                      <td className="p-4 border-l text-gray-600 text-right">{item.item_unit}</td>
                       <td className="p-4 border-l text-center font-mono text-purple-700 font-bold">Rs. {item.unit_price.toLocaleString()}</td>
                       <td className={`p-4 border-l text-center font-bold ${item.stock_quantity <= 5 ? 'text-red-500' : 'text-green-700'}`}>
                         {item.stock_quantity} {item.item_unit}
@@ -270,13 +271,14 @@ function Items({ onItemAdded, onClose }) {
             </table>
           </div>
 
+          {/* Pagination - with bottom margin for spacing */}
           {totalPages > 1 && currentItems.length > 0 && (
             <div className="p-4 flex justify-center gap-2 bg-gray-50 border-t">
-              <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50">←</button>
+              <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50 hover:bg-gray-100 transition-all">→</button>
               {[...Array(totalPages)].map((_, i) => (
-                <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 rounded-lg border ${currentPage === i + 1 ? 'bg-purple-600 text-white' : 'bg-white'}`}>{i + 1}</button>
+                <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 rounded-lg border transition-all ${currentPage === i + 1 ? 'bg-purple-600 text-white' : 'bg-white hover:bg-gray-100'}`}>{i + 1}</button>
               ))}
-              <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50">→</button>
+              <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50 hover:bg-gray-100 transition-all">←</button>
             </div>
           )}
         </div>
@@ -298,8 +300,8 @@ function Items({ onItemAdded, onClose }) {
             <p className="text-gray-700 mb-2">آئٹم: <span className="font-bold text-red-600">{deleteConfirm.name}</span></p>
             <p className="text-gray-500 text-sm mb-4">موجودہ اسٹاک: {deleteConfirm.quantity} {deleteConfirm.unit}</p>
             <div className="flex gap-3">
-              <button onClick={confirmDelete} className="flex-1 bg-red-600 text-white py-3 rounded-xl">ہاں، حذف کریں</button>
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-gray-100 text-gray-800 py-3 rounded-xl">منسوخ</button>
+              <button onClick={confirmDelete} className="flex-1 bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 transition-all">ہاں، حذف کریں</button>
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-gray-100 text-gray-800 py-3 rounded-xl hover:bg-gray-200 transition-all">منسوخ</button>
             </div>
           </div>
         </div>
@@ -309,8 +311,7 @@ function Items({ onItemAdded, onClose }) {
 }
 
 // ============================================
-// ItemForm Component - COMPLETELY FIXED
-// No scrolling, text fully visible, 2-column layout
+// ItemForm Component - Fixed spacing
 // ============================================
 function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
   const [formData, setFormData] = useState({
@@ -393,7 +394,7 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
       </h3>
       
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* ITEM NAME - Full width, proper height, no scroll */}
+        {/* ITEM NAME */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
             آئٹم کا نام <span className="text-red-500">*</span>
@@ -403,12 +404,6 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
             className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 transition-colors ${
               errors.item_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
             }`}
-            style={{
-              height: "auto",
-              minHeight: "48px",
-              lineHeight: "normal",
-              overflow: "visible"
-            }}
             value={formData.item_name} 
             onChange={e => setFormData({...formData, item_name: e.target.value})}
             placeholder="مثال: باسمتی چاول"
@@ -416,7 +411,7 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
           {errors.item_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_name}</p>}
         </div>
 
-        {/* UNIT SELECTION & CUSTOM UNIT - IN SAME ROW (2 columns) */}
+        {/* UNIT SELECTION & CUSTOM UNIT */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
@@ -426,10 +421,6 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
               className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
                 errors.item_unit ? 'border-red-500' : 'border-gray-200'
               }`}
-              style={{
-                height: "68px",
-                lineHeight: "normal"
-              }}
               value={formData.item_unit} 
               onChange={e => setFormData({...formData, item_unit: e.target.value})}
             >
@@ -440,7 +431,7 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
             {errors.item_unit && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_unit}</p>}
           </div>
 
-          {/* Custom Unit Field - Same row when selected */}
+          {/* Custom Unit Field */}
           {formData.item_unit === "__custom" && (
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
@@ -449,10 +440,6 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
               <input 
                 type="text"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500"
-                style={{
-                  height: "68px",
-                  lineHeight: "normal"
-                }}
                 value={formData.custom_unit} 
                 onChange={e => setFormData({...formData, custom_unit: e.target.value})}
                 placeholder="مثال: گٹھلی"
@@ -461,7 +448,7 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
           )}
         </div>
 
-        {/* PRICE & STOCK QUANTITY - IN SAME ROW (2 columns) */}
+        {/* PRICE & STOCK QUANTITY */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
@@ -473,10 +460,6 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
               className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
                 errors.unit_price ? 'border-red-500' : 'border-gray-200'
               }`}
-              style={{
-                height: "48px",
-                lineHeight: "normal"
-              }}
               value={formData.unit_price} 
               onChange={e => setFormData({...formData, unit_price: e.target.value})}
               placeholder="مثال: 2500"
@@ -494,10 +477,6 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
               className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
                 errors.stock_quantity ? 'border-red-500' : 'border-gray-200'
               }`}
-              style={{
-                height: "48px",
-                lineHeight: "normal"
-              }}
               value={formData.stock_quantity} 
               onChange={e => setFormData({...formData, stock_quantity: e.target.value})}
               placeholder="مثال: 50"
