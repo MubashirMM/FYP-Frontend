@@ -190,12 +190,12 @@ function Home() {
                 <span className="text-sm font-medium text-purple-700 font-urdu">اردو وائس سپورٹ کے ساتھ</span>
               </div>
               
-              <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 font-urdu leading-tight">
-                میرا اسٹور
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 mt-2">
-                  سمارٹ مینجمنٹ سسٹم
-                </span>
-              </h1>
+             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-8 font-urdu leading-snug">
+  <span className="block mb-2">میرا اسٹور</span>
+  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 py-2">
+    سمارٹ مینجمنٹ سسٹم
+  </span>
+</h1>
               
               <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto font-urdu leading-relaxed">
                 آواز کے ذریعے ادھار، بل، اور آئٹمز مینج کریں۔ 
