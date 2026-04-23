@@ -5,6 +5,9 @@ import { useState, useEffect } from "react";
 function Header({ user, isAuthenticated, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutConfirm, setLogoutConfirm] = useState("");
+  const [logoutError, setLogoutError] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -14,11 +17,23 @@ function Header({ user, isAuthenticated, onLogout }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    if (onLogout) onLogout();
-    setIsMobileMenuOpen(false);
-    navigate("/login");
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+    setLogoutConfirm("");
+    setLogoutError("");
+  };
+
+  const handleLogoutConfirm = () => {
+    if (logoutConfirm === "LOGOUT") {
+      localStorage.removeItem("token");
+      if (onLogout) onLogout();
+      setShowLogoutModal(false);
+      setLogoutConfirm("");
+      setLogoutError("");
+      navigate("/login");
+    } else {
+      setLogoutError("براہ کرم تصدیق کے لیے 'LOGOUT' لکھیں");
+    }
   };
 
   const navLinkClass = (path) => `
@@ -73,7 +88,7 @@ function Header({ user, isAuthenticated, onLogout }) {
               ) : (
                 <div className="flex items-center gap-6">
                   <Link to="/profile" className="flex items-center gap-3 group">
-                    <div className="text-left"> {/* Keep English welcome text/username left-aligned or change to right */}
+                    <div className="text-left">
                       <p className="text-xs text-purple-300 font-sans text-left">خوش آمدید</p>
                       <p className="text-sm font-bold text-white font-urdu">{user?.username || "صارف"}</p>
                     </div>
@@ -91,7 +106,7 @@ function Header({ user, isAuthenticated, onLogout }) {
                   </Link>
 
                   <button 
-                    onClick={handleLogout} 
+                    onClick={handleLogoutClick} 
                     className="text-purple-200 hover:text-white transition-colors font-urdu text-sm flex items-center gap-2 border border-white/10 px-3 py-2 rounded-lg"
                   >
                     <span>🚪</span> لاگ آؤٹ
@@ -134,7 +149,7 @@ function Header({ user, isAuthenticated, onLogout }) {
                     </div>
                     <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 hover:bg-white/10 rounded-xl font-urdu">👤 پروفائل</Link>
                     <Link to="/voice-samples-form" onClick={() => setIsMobileMenuOpen(false)} className="p-3 hover:bg-white/10 rounded-xl font-urdu">🎙️ وائس رجسٹر</Link>
-                    <button onClick={handleLogout} className="w-full text-right p-3 text-red-300 hover:bg-red-500/10 rounded-xl font-urdu flex items-center justify-between">
+                    <button onClick={handleLogoutClick} className="w-full text-right p-3 text-red-300 hover:bg-red-500/10 rounded-xl font-urdu flex items-center justify-between">
                       <span>لاگ آؤٹ</span>
                       <span>🚪</span>
                     </button>
@@ -145,6 +160,54 @@ function Header({ user, isAuthenticated, onLogout }) {
           )}
         </div>
       </header>
+      
+      {/* Logout Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full mx-auto my-auto p-6 shadow-2xl">
+            <h2 className="text-2xl font-bold text-orange-600 mb-4 text-center font-urdu">
+              🚪 لاگ آؤٹ کی تصدیق
+            </h2>
+            <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl mb-6 text-sm text-orange-700">
+              <p className="font-bold mb-2 font-urdu">⚠️ انتباہ!</p>
+              <p className="font-urdu">کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟</p>
+              <p className="font-urdu text-xs mt-2">آپ کو دوبارہ لاگ ان کرنا ہوگا۔</p>
+            </div>
+            <input
+              type="text"
+              value={logoutConfirm}
+              onChange={(e) => setLogoutConfirm(e.target.value)}
+              placeholder="تصدیق کے لیے LOGOUT لکھیں"
+              className="w-full p-3 border-2 border-orange-300 rounded-xl text-center font-mono mb-3 focus:outline-none focus:border-orange-500"
+            />
+            {logoutError && (
+              <p className="text-red-600 text-sm text-center mb-3 font-urdu">
+                {logoutError}
+              </p>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  setLogoutConfirm("");
+                  setLogoutError("");
+                }}
+                className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 rounded-xl font-bold transition-all font-urdu"
+              >
+                واپس
+              </button>
+              <button
+                onClick={handleLogoutConfirm}
+                disabled={logoutConfirm !== "LOGOUT"}
+                className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold disabled:opacity-50 transition-all font-urdu"
+              >
+                لاگ آؤٹ کریں
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Spacer to prevent content overlap */}
       <div className="h-24"></div>
     </>

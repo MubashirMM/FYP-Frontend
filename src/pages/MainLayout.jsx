@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -91,12 +90,19 @@ function MainLayout() {
       `}>
         <div className="flex items-center justify-between p-4 border-b border-gray-700 shrink-0">
           {isOpen && (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+            <Link to="/items" className="flex items-center gap-3 group">
+              <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-300">
                 <span className="text-lg">🏪</span>
               </div>
-              <span className="text-lg font-bold">میرا اسٹور</span>
-            </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-black tracking-tight text-white font-urdu leading-none">
+                  میرا اسٹور
+                </span>
+                <span className="text-[8px] uppercase tracking-[1px] text-purple-300 font-sans">
+                  Premium Market
+                </span>
+              </div>
+            </Link>
           )}
           <button 
             onClick={() => setIsOpen(!isOpen)} 
@@ -136,12 +142,19 @@ function MainLayout() {
             </button>
             <Link 
               to="/items" 
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+              className="flex items-center gap-3 group hover:opacity-90 transition-all duration-300"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl flex items-center justify-center text-xl shadow-md">
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center text-xl shadow-md group-hover:rotate-6 transition-transform duration-300">
                 🏪
               </div>
-              <h1 className="text-xl font-bold text-gray-800 hidden md:block">میرا اسٹور</h1>
+              <div className="hidden md:flex flex-col text-right">
+                <h1 className="text-xl font-black tracking-tight text-gray-800 font-urdu leading-none">
+                  میرا اسٹور
+                </h1>
+                <span className="text-[8px] uppercase tracking-[1px] text-purple-600 font-sans">
+                  Premium Market
+                </span>
+              </div>
             </Link>
           </div>
 

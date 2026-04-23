@@ -165,15 +165,6 @@ function Profile() {
     <div className="min-h-screen bg-gray-50 p-4 md:p-8" dir="rtl">
       <div className="max-w-2xl mx-auto">
         
-        {/* Voice Register Button - Added at top of profile */}
-        <div className="mb-6 flex justify-end">
-          <Link
-            to="/voice-samples-form"
-            className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-sm font-urdu shadow-md hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2"
-          >
-            <span>🎙️</span> وائس رجسٹر کریں
-          </Link>
-        </div>
 
         {/* Profile Card */}
         <div className="bg-transparent">
