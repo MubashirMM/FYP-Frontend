@@ -5,8 +5,8 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 function Login() {
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [error, setError] = useState("");
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -15,8 +15,8 @@ function Login() {
   const isAuthenticated = !!localStorage.getItem("token");
 
   useEffect(() => {
-    setForm({ username: "", password: "" });
-    setError("");
+    setForm({ email: "", password: "" });
+    setErrors({});
     setSuccessMessage("");
   }, []);
 
@@ -28,26 +28,56 @@ function Login() {
     return "";
   };
 
+  // Password validation - only check for empty
+  const validatePassword = (password) => {
+    if (!password) return "پاس ورڈ درج کریں";
+    return "";
+  };
+
+  const handleFieldChange = (field, value) => {
+    setForm({ ...form, [field]: value });
+    
+    // Clear error for this field when user starts typing
+    setErrors({ ...errors, [field]: "" });
+    setSuccessMessage("");
+    
+    // Real-time validation
+    let errorMsg = "";
+    if (field === "email") errorMsg = validateEmail(value);
+    else if (field === "password") errorMsg = validatePassword(value);
+    
+    if (errorMsg) {
+      setErrors({ ...errors, [field]: errorMsg });
+    }
+  };
+
   const validateForm = () => {
-    // Validate email
-    const emailError = validateEmail(form.username.trim());
-    if (emailError) {
-      setError(emailError);
-      return false;
-    }
+    const emailError = validateEmail(form.email.trim());
+    const passwordError = validatePassword(form.password);
     
-    // Validate password
-    if (!form.password) {
-      setError("پاس ورڈ درج کریں");
-      return false;
-    }
+    const newErrors = {
+      email: emailError,
+      password: passwordError
+    };
     
-    return true;
+    setErrors(newErrors);
+    
+    return !emailError && !passwordError;
+  };
+
+  // Helper function to set error with auto-clear after 3 seconds
+  const setErrorWithTimeout = (errorType, errorMessage) => {
+    setErrors({ [errorType]: errorMessage });
+    
+    // Clear error after 3 seconds
+    setTimeout(() => {
+      setErrors(prev => ({ ...prev, [errorType]: "" }));
+    }, 3000);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setErrors({});
     setSuccessMessage("");
     
     if (!validateForm()) {
@@ -60,8 +90,8 @@ function Login() {
       const res = await axios.post(
         `${API}/auth/login`,
         new URLSearchParams({
-          username: form.username,
-          email: form.username,
+          username: form.email,
+          email: form.email,
           password: form.password,
         })
       );
@@ -74,7 +104,16 @@ function Login() {
       }, 2000);
       
     } catch (err) {
-      setError(err.response?.data?.detail || "❌ لاگ ان میں خرابی: ای میل یا پاس ورڈ غلط ہے");
+      const errorDetail = err.response?.data?.detail || "";
+      
+      // Check different error scenarios - DON'T clear the form
+      if (errorDetail.includes("User not found") || errorDetail.includes("username") || errorDetail.includes("email")) {
+        setErrorWithTimeout("email", "❌ یہ ای میل رجسٹرڈ نہیں ہے۔ براہ کرم پہلے رجسٹر کریں");
+      } else if (errorDetail.includes("Incorrect password") || errorDetail.includes("password")) {
+        setErrorWithTimeout("password", "❌ پاس ورڈ غلط ہے۔ براہ کرم درست پاس ورڈ درج کریں");
+      } else {
+        setErrorWithTimeout("submit", errorDetail || "❌ لاگ ان میں خرابی۔ براہ کرم دوبارہ کوشش کریں");
+      }
     } finally {
       setLoading(false);
     }
@@ -96,12 +135,14 @@ function Login() {
             لاگ ان کریں
           </h2>
           
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-right font-urdu">
-              {error}
+          {/* Submit Error Message */}
+          {errors.submit && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-right font-urdu animate-fade-in">
+              {errors.submit}
             </div>
           )}
           
+          {/* Success Message */}
           {successMessage && (
             <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-right animate-pulse font-urdu">
               {successMessage}
@@ -113,25 +154,42 @@ function Login() {
             <div>
               <input
                 type="email"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-right font-urdu focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all placeholder:text-right"
+                className={`w-full px-4 py-3 border-2 rounded-xl text-right font-urdu focus:outline-none focus:ring-2 transition-all placeholder:text-right ${
+                  errors.email 
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-200" 
+                    : "border-gray-300 focus:border-purple-500 focus:ring-purple-200"
+                }`}
                 placeholder="ای میل درج کریں" 
-                value={form.username}
+                value={form.email}
                 autoComplete="off"
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                onChange={(e) => handleFieldChange("email", e.target.value)}
               />
-              
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1 text-right font-urdu animate-fade-in">
+                  {errors.email}
+                </p>
+              )}
             </div>
             
             {/* Password Field */}
             <div>
               <input
                 type="password"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-right font-urdu focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all placeholder:text-right"
+                className={`w-full px-4 py-3 border-2 rounded-xl text-right font-urdu focus:outline-none focus:ring-2 transition-all placeholder:text-right ${
+                  errors.password 
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-200" 
+                    : "border-gray-300 focus:border-purple-500 focus:ring-purple-200"
+                }`}
                 placeholder="پاس ورڈ درج کریں"
                 value={form.password}
                 autoComplete="new-password" 
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => handleFieldChange("password", e.target.value)}
               />
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1 text-right font-urdu animate-fade-in">
+                  {errors.password}
+                </p>
+              )}
             </div>
 
             {/* Login Button */}
