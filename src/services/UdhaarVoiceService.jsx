@@ -24,18 +24,24 @@ export class UdhaarVoiceService {
       onOpenUdhaarPopup
     } = callbacks;
 
+    // Check for invalid action
+    if (commandJson.action === 0) {
+      this.showMsg(commandJson.message || "❌ یہ کمانڈ یہاں پروسیس نہیں کی جا سکتی۔ براہ کرم صرف ادھار/کھاتہ سے متعلق کمانڈ دیں۔", "error");
+      return false;
+    }
+
     switch (commandJson.action) {
       case 1:
-        // Add = Direct Addition to customer account
+        // Direct Addition to customer account
         return this.handleDirectAddition(commandJson, onDirectAddition, onOpenUdhaarPopup);
       case 2:
-        // Delete = Direct Deduction from customer account
+        // Direct Deduction from customer account
         return this.handleDirectDeduction(commandJson, onDirectDeduction, onOpenUdhaarPopup);
       case 3:
-        // Search = Find customer
+        // Search customer
         return this.handleSearch(commandJson, onSearch, onOpenUdhaarPopup);
       case 4:
-        // Update = Pay/Paid or View details (based on context)
+        // Udhaar Action: Pay, Print, or View
         if (commandJson.action_type === "pay") {
           return this.handlePay(commandJson, onPayUdhaar, onOpenUdhaarPopup);
         } else if (commandJson.action_type === "print") {
@@ -44,7 +50,7 @@ export class UdhaarVoiceService {
           return this.handleViewDetails(commandJson, onShowUdhaarDetails, onOpenUdhaarPopup);
         }
       case 5:
-        // Read All = Show all udhaar
+        // Read all udhaar
         return this.handleReadAll(onShowAllUdhaar, onOpenUdhaarPopup);
       default:
         this.showMsg("❌ نامعلوم کمانڈ", "error");
@@ -52,15 +58,15 @@ export class UdhaarVoiceService {
     }
   }
 
-  // ✅ DIRECT ADDITION (action: 1) - "ali ke khatay mein 1200 daal do"
+  // ✅ DIRECT ADDITION (action: 1) - "ali ke khatay mein 500 daal do"
   async handleDirectAddition(command, onDirectAddition, onOpenUdhaarPopup) {
     if (!command.customer_name) {
-      this.showMsg("❌ کسٹمر کا نام نہیں ملا", "error");
+      this.showMsg("❌ کسٹمر کا نام نہیں ملا۔ براہ کرم واضح بولیں", "error");
       return false;
     }
     
     if (!command.amount || command.amount <= 0) {
-      this.showMsg("❌ رقم درج نہیں ہے یا غلط ہے", "error");
+      this.showMsg("❌ رقم درج نہیں ہے یا غلط ہے۔ براہ کرم صحیح رقم بولیں", "error");
       return false;
     }
 
@@ -76,15 +82,15 @@ export class UdhaarVoiceService {
     return true;
   }
 
-  // ❌ DIRECT DEDUCTION (action: 2) - "ali ke khatay se 3400 nikaal do"
+  // ❌ DIRECT DEDUCTION (action: 2) - "ali ke khatay se 300 nikaal do"
   async handleDirectDeduction(command, onDirectDeduction, onOpenUdhaarPopup) {
     if (!command.customer_name) {
-      this.showMsg("❌ کسٹمر کا نام نہیں ملا", "error");
+      this.showMsg("❌ کسٹمر کا نام نہیں ملا۔ براہ کرم واضح بولیں", "error");
       return false;
     }
     
     if (!command.amount || command.amount <= 0) {
-      this.showMsg("❌ رقم درج نہیں ہے یا غلط ہے", "error");
+      this.showMsg("❌ رقم درج نہیں ہے یا غلط ہے۔ براہ کرم صحیح رقم بولیں", "error");
       return false;
     }
 
@@ -103,7 +109,7 @@ export class UdhaarVoiceService {
   // 🔍 SEARCH (action: 3) - "ali ka udhaar dhundo"
   async handleSearch(command, onSearch, onOpenUdhaarPopup) {
     if (!command.customer_name) {
-      this.showMsg("❌ کسٹمر کا نام نہیں ملا", "error");
+      this.showMsg("❌ کسٹمر کا نام نہیں ملا۔ براہ کرم واضح بولیں", "error");
       return false;
     }
 
@@ -116,7 +122,7 @@ export class UdhaarVoiceService {
   // 💰 PAY UDHAAR (action: 4 with action_type: "pay") - "ali ka udhaar ada karo"
   async handlePay(command, onPayUdhaar, onOpenUdhaarPopup) {
     if (!command.customer_name) {
-      this.showMsg("❌ کسٹمر کا نام نہیں ملا", "error");
+      this.showMsg("❌ کسٹمر کا نام نہیں ملا۔ براہ کرم واضح بولیں", "error");
       return false;
     }
 
@@ -129,7 +135,7 @@ export class UdhaarVoiceService {
   // 🖨️ PRINT UDHAAR (action: 4 with action_type: "print") - "ali ka udhaar print karo"
   async handlePrint(command, onPrintUdhaar, onOpenUdhaarPopup) {
     if (!command.customer_name) {
-      this.showMsg("❌ کسٹمر کا نام نہیں ملا", "error");
+      this.showMsg("❌ کسٹمر کا نام نہیں ملا۔ براہ کرم واضح بولیں", "error");
       return false;
     }
 
@@ -141,7 +147,7 @@ export class UdhaarVoiceService {
   // 👁️ VIEW UDHAAR DETAILS (action: 4 with action_type: "view") - "ali ka udhaar dikhao / kitna hai"
   async handleViewDetails(command, onShowUdhaarDetails, onOpenUdhaarPopup) {
     if (!command.customer_name) {
-      this.showMsg("❌ کسٹمر کا نام نہیں ملا", "error");
+      this.showMsg("❌ کسٹمر کا نام نہیں ملا۔ براہ کرم واضح بولیں", "error");
       return false;
     }
 
@@ -173,7 +179,8 @@ export class UdhaarVoiceService {
       if (this.refreshUdhaar) await this.refreshUdhaar();
       return true;
     } catch (err) {
-      this.showMsg(err.response?.data?.detail || "جمع کرنے میں خرابی", "error");
+      const errorMsg = err.response?.data?.detail || "جمع کرنے میں خرابی";
+      this.showMsg(`❌ ${errorMsg}`, "error");
       return false;
     }
   }
@@ -192,7 +199,8 @@ export class UdhaarVoiceService {
       if (this.refreshUdhaar) await this.refreshUdhaar();
       return true;
     } catch (err) {
-      this.showMsg(err.response?.data?.detail || "کٹوتی کرنے میں خرابی", "error");
+      const errorMsg = err.response?.data?.detail || "کٹوتی کرنے میں خرابی";
+      this.showMsg(`❌ ${errorMsg}`, "error");
       return false;
     }
   }
@@ -210,7 +218,8 @@ export class UdhaarVoiceService {
       if (this.refreshUdhaar) await this.refreshUdhaar();
       return true;
     } catch (err) {
-      this.showMsg(err.response?.data?.detail || "ادائیگی ناکام", "error");
+      const errorMsg = err.response?.data?.detail || "ادائیگی ناکام";
+      this.showMsg(`❌ ${errorMsg}`, "error");
       return false;
     }
   }

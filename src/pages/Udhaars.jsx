@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from "react";
 import axios from "axios";
 import VoiceInput from "../components/VoiceInput";
@@ -39,9 +37,6 @@ function Udhaars({ onItemAdded, onClose }) {
   const [amount, setAmount] = useState("");
   const [formLoading, setFormLoading] = useState(false);
   const [formMessage, setFormMessage] = useState({ text: "", type: "" });
-
-  // Voice service reference
-  const voiceServiceRef = useState(null);
 
   const getAuthHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
 
@@ -94,12 +89,12 @@ function Udhaars({ onItemAdded, onClose }) {
     
     await voiceService.processCommand(commandJson, {
       onShowUdhaarDetails: async (customerName) => {
-        // Find and show udhaar details
         const foundUdhaar = udhars.find(u => 
           u.customer_name?.toLowerCase() === customerName.toLowerCase()
         );
         if (foundUdhaar) {
           setSelectedUdhar(foundUdhaar);
+          showMsg(`👁️ "${customerName}" کا اُدھار دکھایا جا رہا ہے`, "success");
         } else {
           showMsg(`❌ "${customerName}" کا کوئی اُدھار نہیں ہے`, "error");
         }
@@ -110,6 +105,7 @@ function Udhaars({ onItemAdded, onClose }) {
         );
         if (foundUdhaar) {
           printUdhar(foundUdhaar);
+          showMsg(`🖨️ "${customerName}" کا اُدھار پرنٹ کیا جا رہا ہے`, "success");
         } else {
           showMsg(`❌ "${customerName}" کا کوئی اُدھار نہیں ہے`, "error");
         }
@@ -121,6 +117,7 @@ function Udhaars({ onItemAdded, onClose }) {
         if (foundUdhaar && foundUdhaar.status === "unpaid") {
           await voiceService.executePay(customerName);
           await fetchUdhars();
+          setSelectedUdhar(null);
         } else if (foundUdhaar && foundUdhaar.status === "paid") {
           showMsg(`✅ "${customerName}" کا اُدھار پہلے ہی ادا ہے`, "info");
         } else {
@@ -137,17 +134,20 @@ function Udhaars({ onItemAdded, onClose }) {
       },
       onSearch: (searchTerm) => {
         setSearch(searchTerm);
+        setStatusFilter("all");
         const filtered = udhars.filter(u => 
           (u.customer_name || "").toLowerCase().includes(searchTerm.toLowerCase())
         );
         setFilteredUdhars(filtered);
         setCurrentPage(1);
+        showMsg(`🔍 "${searchTerm}" تلاش کیا جا رہا ہے`, "success");
       },
       onShowAllUdhaar: () => {
         setSearch("");
         setStatusFilter("all");
         setFilteredUdhars(udhars);
         setCurrentPage(1);
+        showMsg("📋 تمام کسٹمرز کے اُدھار دکھائے جا رہے ہیں", "success");
       },
       onOpenUdhaarPopup: () => {
         // Already on Udhaar page
@@ -256,7 +256,7 @@ function Udhaars({ onItemAdded, onClose }) {
       setSelectedCustomer("");
       setAmount("");
       setFormMessage({ text: "", type: "" });
-      showMsg("✅ براہ راست کٹوتی کامیابی سے شامل کر دی گئی", "success");
+      showMsg("✅ براہ راست کٹوتی کامیابی سے کر دی گئی", "success");
       await fetchUdhars();
     } catch (err) {
       setFormMessage({ text: err.response?.data?.detail || "کٹوتی کرنے میں خرابی", type: "error" });
@@ -368,10 +368,10 @@ function Udhaars({ onItemAdded, onClose }) {
         </div>
 
         <table class="details-table">
-          <tr><td>سب ٹوٹل:</td><td>${udhar.subtotal?.toLocaleString()} روپے</td></tr>
-          <tr><td>براہ راست جمع:</td><td style="color: #10b981">+ ${udhar.direct_addition?.toLocaleString()} روپے</td></tr>
-          <tr><td>براہ راست کٹوتی:</td><td style="color: #ef4444">- ${udhar.direct_deduction?.toLocaleString()} روپے</td></tr>
-          <tr><td>اسٹیٹس:</td><td><span class="status ${udhar.status === 'paid' ? 'status-paid' : 'status-unpaid'}">${udhar.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}</span></td></tr>
+          <tr><td style="text-align: right">سب ٹوٹل:</td><td style="text-align: left">${udhar.subtotal?.toLocaleString()} روپے</td></tr>
+          <tr><td style="text-align: right">براہ راست جمع:</td><td style="text-align: left; color: #10b981">+ ${udhar.direct_addition?.toLocaleString()} روپے</td></tr>
+          <tr><td style="text-align: right">براہ راست کٹوتی:</td><td style="text-align: left; color: #ef4444">- ${udhar.direct_deduction?.toLocaleString()} روپے</td></tr>
+          <tr><td style="text-align: right">اسٹیٹس:</td><td style="text-align: left"><span class="status ${udhar.status === 'paid' ? 'status-paid' : 'status-unpaid'}">${udhar.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}</span></td></tr>
         </table>
 
         <div class="footer">شکریہ! آپ کا اعتبار ہماری ترجیح ہے۔</div>
@@ -466,8 +466,8 @@ function Udhaars({ onItemAdded, onClose }) {
 
   return (
     <div className="relative min-h-screen bg-gray-50 p-3 md:p-6" dir="rtl">
-      {/* Voice Input Component */}
-      <VoiceInput onCommandReceived={handleVoiceCommand} />
+      {/* Voice Input Component - WITH udhaar FEATURE */}
+      <VoiceInput onCommandReceived={handleVoiceCommand} feature="udhaar" />
 
       {/* Message Toast */}
       {message.text && (
@@ -484,16 +484,16 @@ function Udhaars({ onItemAdded, onClose }) {
       {showVoiceAdditionForm && (
         <div className="fixed inset-0 bg-black/70 z-[300] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-8">
-            <h3 className="text-2xl font-black mb-6 text-center">براہ راست جمع کریں (وائس کمانڈ)</h3>
-            <div className="mb-4 p-3 bg-amber-50 rounded-2xl text-right">
-              <p><strong>کسٹمر:</strong> {voiceFormData.customer_name}</p>
-              <p><strong>رقم:</strong> {voiceFormData.amount} روپے</p>
+            <h3 className="text-2xl font-black mb-6 text-center text-green-600">💰 براہ راست جمع کریں (وائس کمانڈ)</h3>
+            <div className="mb-4 p-4 bg-green-50 rounded-2xl text-right border border-green-200">
+              <p className="text-lg"><strong className="text-green-700">کسٹمر:</strong> <span className="font-bold">{voiceFormData.customer_name}</span></p>
+              <p className="text-lg mt-2"><strong className="text-green-700">رقم:</strong> <span className="font-bold text-green-600">{voiceFormData.amount} روپے</span></p>
             </div>
             <div className="flex gap-4">
-              <button onClick={confirmVoiceAddition} disabled={voiceFormLoading} className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold">
+              <button onClick={confirmVoiceAddition} disabled={voiceFormLoading} className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-green-700 transition-all">
                 {voiceFormLoading ? "جمع کر رہا ہے..." : "✅ تصدیق کریں"}
               </button>
-              <button onClick={() => { setShowVoiceAdditionForm(false); setVoiceFormData({ customer_name: "", amount: "" }); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold">
+              <button onClick={() => { setShowVoiceAdditionForm(false); setVoiceFormData({ customer_name: "", amount: "" }); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold text-lg hover:bg-gray-300 transition-all">
                 ❌ منسوخ
               </button>
             </div>
@@ -505,16 +505,16 @@ function Udhaars({ onItemAdded, onClose }) {
       {showVoiceDeductionForm && (
         <div className="fixed inset-0 bg-black/70 z-[300] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-8">
-            <h3 className="text-2xl font-black mb-6 text-center">براہ راست کٹوتی کریں (وائس کمانڈ)</h3>
-            <div className="mb-4 p-3 bg-amber-50 rounded-2xl text-right">
-              <p><strong>کسٹمر:</strong> {voiceFormData.customer_name}</p>
-              <p><strong>رقم:</strong> {voiceFormData.amount} روپے</p>
+            <h3 className="text-2xl font-black mb-6 text-center text-red-600">✂️ براہ راست کٹوتی کریں (وائس کمانڈ)</h3>
+            <div className="mb-4 p-4 bg-red-50 rounded-2xl text-right border border-red-200">
+              <p className="text-lg"><strong className="text-red-700">کسٹمر:</strong> <span className="font-bold">{voiceFormData.customer_name}</span></p>
+              <p className="text-lg mt-2"><strong className="text-red-700">رقم:</strong> <span className="font-bold text-red-600">{voiceFormData.amount} روپے</span></p>
             </div>
             <div className="flex gap-4">
-              <button onClick={confirmVoiceDeduction} disabled={voiceFormLoading} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-bold">
+              <button onClick={confirmVoiceDeduction} disabled={voiceFormLoading} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-red-700 transition-all">
                 {voiceFormLoading ? "کٹوتی کر رہا ہے..." : "✂️ تصدیق کریں"}
               </button>
-              <button onClick={() => { setShowVoiceDeductionForm(false); setVoiceFormData({ customer_name: "", amount: "" }); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold">
+              <button onClick={() => { setShowVoiceDeductionForm(false); setVoiceFormData({ customer_name: "", amount: "" }); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold text-lg hover:bg-gray-300 transition-all">
                 ❌ منسوخ
               </button>
             </div>
@@ -526,25 +526,34 @@ function Udhaars({ onItemAdded, onClose }) {
       {showAdditionForm && (
         <div className="fixed inset-0 bg-black/70 z-[300] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-8">
-            <h3 className="text-2xl font-black mb-6 text-center">براہ راست جمع کریں</h3>
+            <h3 className="text-2xl font-black mb-6 text-center text-green-600">💰 براہ راست جمع کریں</h3>
             {formMessage.text && formMessage.type === "error" && (
               <div className="mb-4 p-3 rounded-xl text-center bg-red-100 text-red-700">❌ {formMessage.text}</div>
             )}
             <form onSubmit={handleDirectAddition}>
               <div className="mb-4">
-                <label className="block text-sm font-bold mb-2 text-right">کسٹمر کا نام *</label>
-                <select value={selectedCustomer} onChange={(e) => setSelectedCustomer(e.target.value)} className="w-full p-4 border-2 rounded-2xl text-right" required>
-                  <option value="">کسٹمر منتخب کریں</option>
-                  {udhars.map(u => <option key={u.udhar_id} value={u.customer_name}>{u.customer_name}</option>)}
-                </select>
-              </div>
+  <label className="block text-sm font-bold mb-2 text-right">کسٹمر کا نام *</label>
+  <input 
+    type="text"
+    list="customer-list"
+    value={selectedCustomer}
+    onChange={(e) => setSelectedCustomer(e.target.value)}
+    placeholder="موجودہ کسٹمر منتخب کریں یا نیا نام لکھیں"
+    className="w-full p-4 border-2 rounded-2xl text-right focus:border-green-500 outline-none"
+    required
+  />
+  <datalist id="customer-list">
+    {udhars.map(u => <option key={u.udhar_id} value={u.customer_name} />)}
+  </datalist>
+  <p className="text-xs text-gray-500 mt-1 text-right">💡 آپ موجودہ کسٹمر منتخب کر سکتے ہیں یا نیا نام لکھ سکتے ہیں</p>
+</div>
               <div className="mb-6">
                 <label className="block text-sm font-bold mb-2 text-right">رقم (روپے میں) *</label>
-                <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="مثلاً: 500" className="w-full p-4 border-2 rounded-2xl text-right" required />
+                <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="مثلاً: 500" className="w-full p-4 border-2 rounded-2xl text-right focus:border-green-500 outline-none" required />
               </div>
               <div className="flex gap-4">
-                <button type="submit" disabled={formLoading} className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold">{formLoading ? "جمع کر رہا ہے..." : "✅ جمع کریں"}</button>
-                <button type="button" onClick={() => { setShowAdditionForm(false); setSelectedCustomer(""); setAmount(""); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold">❌ منسوخ</button>
+                <button type="submit" disabled={formLoading} className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold hover:bg-green-700 transition-all">{formLoading ? "جمع کر رہا ہے..." : "✅ جمع کریں"}</button>
+                <button type="button" onClick={() => { setShowAdditionForm(false); setSelectedCustomer(""); setAmount(""); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold hover:bg-gray-300 transition-all">❌ منسوخ</button>
               </div>
             </form>
           </div>
@@ -555,25 +564,25 @@ function Udhaars({ onItemAdded, onClose }) {
       {showDeductionForm && (
         <div className="fixed inset-0 bg-black/70 z-[300] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-8">
-            <h3 className="text-2xl font-black mb-6 text-center">براہ راست کٹوتی کریں</h3>
+            <h3 className="text-2xl font-black mb-6 text-center text-red-600">✂️ براہ راست کٹوتی کریں</h3>
             {formMessage.text && formMessage.type === "error" && (
               <div className="mb-4 p-3 rounded-xl text-center bg-red-100 text-red-700">❌ {formMessage.text}</div>
             )}
             <form onSubmit={handleDirectDeduction}>
               <div className="mb-4">
                 <label className="block text-sm font-bold mb-2 text-right">کسٹمر کا نام *</label>
-                <select value={selectedCustomer} onChange={(e) => setSelectedCustomer(e.target.value)} className="w-full p-4 border-2 rounded-2xl text-right" required>
+                <select value={selectedCustomer} onChange={(e) => setSelectedCustomer(e.target.value)} className="w-full p-4 border-2 rounded-2xl text-right focus:border-red-500 outline-none" required>
                   <option value="">کسٹمر منتخب کریں</option>
                   {udhars.map(u => <option key={u.udhar_id} value={u.customer_name}>{u.customer_name}</option>)}
                 </select>
               </div>
               <div className="mb-6">
                 <label className="block text-sm font-bold mb-2 text-right">رقم (روپے میں) *</label>
-                <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="مثلاً: 500" className="w-full p-4 border-2 rounded-2xl text-right" required />
+                <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="مثلاً: 500" className="w-full p-4 border-2 rounded-2xl text-right focus:border-red-500 outline-none" required />
               </div>
               <div className="flex gap-4">
-                <button type="submit" disabled={formLoading} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-bold">{formLoading ? "کٹوتی کر رہا ہے..." : "✂️ کٹوتی کریں"}</button>
-                <button type="button" onClick={() => { setShowDeductionForm(false); setSelectedCustomer(""); setAmount(""); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold">❌ منسوخ</button>
+                <button type="submit" disabled={formLoading} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-bold hover:bg-red-700 transition-all">{formLoading ? "کٹوتی کر رہا ہے..." : "✂️ کٹوتی کریں"}</button>
+                <button type="button" onClick={() => { setShowDeductionForm(false); setSelectedCustomer(""); setAmount(""); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold hover:bg-gray-300 transition-all">❌ منسوخ</button>
               </div>
             </form>
           </div>
@@ -581,131 +590,132 @@ function Udhaars({ onItemAdded, onClose }) {
       )}
 
       {/* Main Content */}
-      <div className="bg-white p-5 rounded-t-3xl shadow-sm border-b">
-        <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
-          <div>
-            <h2 className="text-2xl font-black text-gray-800">کھاتہ (اُدھار کا خلاصہ)</h2>
-            <p className="text-gray-500">کل کسٹمرز: {filteredUdhars.length}</p>
+      <div className="bg-white rounded-t-3xl shadow-sm border-b overflow-hidden">
+        <div className="p-5">
+          <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-2xl font-black text-gray-800">📒 کھاتہ (اُدھار کا خلاصہ)</h2>
+              <p className="text-gray-500">کل کسٹمرز: {filteredUdhars.length}</p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={() => handleSort("customer")} className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all ${sortBy === "customer" ? "bg-amber-600 text-white" : "bg-gray-100 hover:bg-gray-200"}`}>نام {sortBy === "customer" && (sortOrder === "asc" ? "↑" : "↓")}</button>
+              <button onClick={() => handleSort("total")} className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all ${sortBy === "total" ? "bg-amber-600 text-white" : "bg-gray-100 hover:bg-gray-200"}`}>رقم {sortBy === "total" && (sortOrder === "asc" ? "↑" : "↓")}</button>
+              <button onClick={() => handleSort("created_date")} className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all ${sortBy === "created_date" ? "bg-amber-600 text-white" : "bg-gray-100 hover:bg-gray-200"}`}>تخلیق تاریخ {sortBy === "created_date" && (sortOrder === "asc" ? "↑" : "↓")}</button>
+              <button onClick={() => handleSort("paid_date")} className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all ${sortBy === "paid_date" ? "bg-amber-600 text-white" : "bg-gray-100 hover:bg-gray-200"}`}>ادائیگی تاریخ {sortBy === "paid_date" && (sortOrder === "asc" ? "↑" : "↓")}</button>
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={() => handleSort("customer")} className={`px-4 py-2 rounded-2xl font-bold text-sm ${sortBy === "customer" ? "bg-amber-600 text-white" : "bg-gray-100"}`}>نام {sortBy === "customer" && (sortOrder === "asc" ? "↑" : "↓")}</button>
-            <button onClick={() => handleSort("total")} className={`px-4 py-2 rounded-2xl font-bold text-sm ${sortBy === "total" ? "bg-amber-600 text-white" : "bg-gray-100"}`}>رقم {sortBy === "total" && (sortOrder === "asc" ? "↑" : "↓")}</button>
-            <button onClick={() => handleSort("created_date")} className={`px-4 py-2 rounded-2xl font-bold text-sm ${sortBy === "created_date" ? "bg-amber-600 text-white" : "bg-gray-100"}`}>تخلیق تاریخ {sortBy === "created_date" && (sortOrder === "asc" ? "↑" : "↓")}</button>
-            <button onClick={() => handleSort("paid_date")} className={`px-4 py-2 rounded-2xl font-bold text-sm ${sortBy === "paid_date" ? "bg-amber-600 text-white" : "bg-gray-100"}`}>ادائیگی تاریخ {sortBy === "paid_date" && (sortOrder === "asc" ? "↑" : "↓")}</button>
-          </div>
-        </div>
-        
-        <div className="flex flex-col md:flex-row justify-between gap-4">
-          <form onSubmit={handleSearchSubmit} className="flex-1">
-            <input type="text" placeholder="کسٹمر نام سے تلاش کریں..." value={search} onChange={e => setSearch(e.target.value)} className="w-full p-4 border-2 border-gray-200 rounded-3xl focus:border-amber-500 outline-none text-right" />
-          </form>
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={() => { setShowAdditionForm(true); setFormMessage({ text: "", type: "" }); }} className="px-6 py-3 rounded-3xl font-bold bg-green-600 text-white hover:bg-green-700">+ براہ راست جمع</button>
-            <button onClick={() => { setShowDeductionForm(true); setFormMessage({ text: "", type: "" }); }} className="px-6 py-3 rounded-3xl font-bold bg-red-600 text-white hover:bg-red-700">- براہ راست کٹوتی</button>
-            <button onClick={() => handleFilter("all")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "all" ? "bg-amber-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>سب</button>
-            <button onClick={() => handleFilter("unpaid")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "unpaid" ? "bg-rose-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>غیر ادا شدہ</button>
-            <button onClick={() => handleFilter("paid")} className={`px-6 py-3 rounded-3xl font-bold ${statusFilter === "paid" ? "bg-emerald-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>ادا شدہ</button>
-            {/* <button onClick={onClose} className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600">✕ بند کریں</button> */}
+          
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            <form onSubmit={handleSearchSubmit} className="flex-1">
+              <input type="text" placeholder="🔍 کسٹمر نام سے تلاش کریں..." value={search} onChange={e => setSearch(e.target.value)} className="w-full p-4 border-2 border-gray-200 rounded-3xl focus:border-amber-500 outline-none text-right" />
+            </form>
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={() => { setShowAdditionForm(true); setFormMessage({ text: "", type: "" }); }} className="px-6 py-3 rounded-3xl font-bold bg-green-600 text-white hover:bg-green-700 transition-all">💰 براہ راست جمع</button>
+              <button onClick={() => { setShowDeductionForm(true); setFormMessage({ text: "", type: "" }); }} className="px-6 py-3 rounded-3xl font-bold bg-red-600 text-white hover:bg-red-700 transition-all">✂️ براہ راست کٹوتی</button>
+              <button onClick={() => handleFilter("all")} className={`px-6 py-3 rounded-3xl font-bold transition-all ${statusFilter === "all" ? "bg-amber-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>📋 سب</button>
+              <button onClick={() => handleFilter("unpaid")} className={`px-6 py-3 rounded-3xl font-bold transition-all ${statusFilter === "unpaid" ? "bg-rose-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>⚠️ غیر ادا شدہ</button>
+              <button onClick={() => handleFilter("paid")} className={`px-6 py-3 rounded-3xl font-bold transition-all ${statusFilter === "paid" ? "bg-emerald-600 text-white shadow-lg" : "bg-gray-100 hover:bg-gray-200"}`}>✅ ادا شدہ</button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Table */}
       <div className="bg-white shadow-xl rounded-b-3xl overflow-hidden border overflow-x-auto">
-      <table className="w-full min-w-[1100px]">
-  <thead className="bg-gray-100">
-    <tr>
-      <th className="p-5 border-l font-bold cursor-pointer hover:bg-gray-200 whitespace-nowrap" onClick={() => handleSort("customer")}>کسٹمر</th>
-      <th className="p-5 border-l font-bold text-center whitespace-nowrap">اُدھار نمبر</th>
-      <th className="p-5 border-l font-bold text-center whitespace-nowrap">سب ٹوٹل</th>
-      <th className="p-5 border-l font-bold text-center whitespace-nowrap">براہ راست جمع</th>
-      <th className="p-5 border-l font-bold text-center whitespace-nowrap">براہ راست کٹوتی</th>
-      <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200 whitespace-nowrap" onClick={() => handleSort("total")}>کل اُدھار</th>
-      <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200 whitespace-nowrap" onClick={() => handleSort("created_date")}>تخلیق تاریخ / وقت</th>
-      <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200 whitespace-nowrap" onClick={() => handleSort("paid_date")}>ادائیگی تاریخ / وقت</th>
-      <th className="p-5 border-l font-bold text-center whitespace-nowrap">اسٹیٹس</th>
-      <th className="p-5 text-center font-bold whitespace-nowrap">عمل</th>
-    </tr>
-  </thead>
-  <tbody>
-    {loading ? (
-      <tr><td colSpan="10" className="p-20 text-center text-gray-400"><div className="flex flex-col items-center gap-2"><div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div><span>لوڈ ہو رہا ہے...</span></div></td></tr>
-    ) : currentItems.length > 0 ? (
-      currentItems.map((u) => {
-        const dateParts = extractDateParts(u.created_date_urdu);
-        const paidDateParts = u.paid_date_urdu ? extractDateParts(u.paid_date_urdu) : { day: "", month: "", year: "" };
-        const dayName = extractDayName(u.created_date_urdu);
-        const paidDayName = u.paid_date_urdu ? extractDayName(u.paid_date_urdu) : "";
-        
-        return (
-          <tr key={u.udhar_id} className="border-b hover:bg-amber-50 transition-colors">
-            <td className="p-5 border-l font-bold whitespace-nowrap">{u.customer_name}</td>
-            <td className="p-5 border-l text-center font-mono whitespace-nowrap">#{u.udhar_id}</td>
-            <td className="p-5 border-l text-center whitespace-nowrap">{u.subtotal?.toLocaleString() || 0}</td>
-            <td className="p-5 border-l text-center text-green-600 whitespace-nowrap">+{u.direct_addition?.toLocaleString() || 0}</td>
-            <td className="p-5 border-l text-center text-red-600 whitespace-nowrap">-{u.direct_deduction?.toLocaleString() || 0}</td>
-            <td className="p-5 border-l text-center font-bold text-xl text-amber-700 whitespace-nowrap">{u.total?.toLocaleString() || 0}</td>
-            <td className="p-5 border-l text-center text-sm whitespace-nowrap">
-              <div>{dayName}، {dateParts.day} {dateParts.month} {dateParts.year}</div>
-              <div className="text-xs text-gray-500 mt-1">{u.udhar_time || u.created_time || "—"}</div>
-            </td>
-            <td className="p-5 border-l text-center text-sm whitespace-nowrap">
-              {u.status === "paid" ? (
-                <>
-                  <div>{paidDayName}، {paidDateParts.day} {paidDateParts.month} {paidDateParts.year}</div>
-                  <div className="text-xs text-gray-500 mt-1">{u.paid_time || "—"}</div>
-                </>
-              ) : "—"}
-            </td>
-            <td className="p-5 border-l text-center whitespace-nowrap">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${u.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                {u.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}
-              </span>
-            </td>
-            <td className="p-5 text-center whitespace-nowrap">
-              <div className="flex gap-2 justify-center items-center">
-                <button onClick={() => setSelectedUdhar(u)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-2xl font-medium text-sm whitespace-nowrap">👁️ دیکھیں</button>
-                <button onClick={() => printUdhar(u)} className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-2xl font-medium text-sm whitespace-nowrap">🖨️ پرنٹ</button>
-                <button onClick={() => setDeleteId(u.udhar_id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-2xl font-medium text-sm whitespace-nowrap">🗑️ حذف</button>
-              </div>
-            </td>
-          </tr>
-        );
-      })
-    ) : (
-  <tr>
-    <td colSpan="10" className="p-20 text-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">
-          📊
-        </div>
-        <p className="text-gray-500 text-lg font-medium">{getEmptyMessage()}</p>
-        {(search || statusFilter !== "all") && (
-          <button 
-            onClick={() => { 
-              setSearch(""); 
-              setStatusFilter("all"); 
-              applyFiltersAndSort();
-            }} 
-            className="text-amber-600 hover:text-amber-700 font-bold underline"
-          >
-            تمام کسٹمرز دیکھیں
-          </button>
-        )}
-      </div>
-    </td>
-  </tr>
-)}
-  </tbody>
-</table>
+        <table className="w-full min-w-[1100px]">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-5 border-l font-bold cursor-pointer hover:bg-gray-200 whitespace-nowrap" onClick={() => handleSort("customer")}>👤 کسٹمر</th>
+              <th className="p-5 border-l font-bold text-center whitespace-nowrap">🔢 اُدھار نمبر</th>
+              <th className="p-5 border-l font-bold text-center whitespace-nowrap">💰 سب ٹوٹل</th>
+              <th className="p-5 border-l font-bold text-center whitespace-nowrap">➕ براہ راست جمع</th>
+              <th className="p-5 border-l font-bold text-center whitespace-nowrap">➖ براہ راست کٹوتی</th>
+              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200 whitespace-nowrap" onClick={() => handleSort("total")}>📊 کل اُدھار</th>
+              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200 whitespace-nowrap" onClick={() => handleSort("created_date")}>📅 تخلیق تاریخ / وقت</th>
+              <th className="p-5 border-l font-bold text-center cursor-pointer hover:bg-gray-200 whitespace-nowrap" onClick={() => handleSort("paid_date")}>✅ ادائیگی تاریخ / وقت</th>
+              <th className="p-5 border-l font-bold text-center whitespace-nowrap">🏷️ اسٹیٹس</th>
+              <th className="p-5 text-center font-bold whitespace-nowrap">⚙️ عمل</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="10" className="p-20 text-center text-gray-400"><div className="flex flex-col items-center gap-2"><div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div><span>لوڈ ہو رہا ہے...</span></div></td></tr>
+            ) : currentItems.length > 0 ? (
+              currentItems.map((u) => {
+                const dateParts = extractDateParts(u.created_date_urdu);
+                const paidDateParts = u.paid_date_urdu ? extractDateParts(u.paid_date_urdu) : { day: "", month: "", year: "" };
+                const dayName = extractDayName(u.created_date_urdu);
+                const paidDayName = u.paid_date_urdu ? extractDayName(u.paid_date_urdu) : "";
+                
+                return (
+                  <tr key={u.udhar_id} className="border-b hover:bg-amber-50 transition-colors">
+                    <td className="p-5 border-l font-bold whitespace-nowrap">{u.customer_name}</td>
+                    <td className="p-5 border-l text-center font-mono whitespace-nowrap">#{u.udhar_id}</td>
+                    <td className="p-5 border-l text-center whitespace-nowrap">{u.subtotal?.toLocaleString() || 0}</td>
+                    <td className="p-5 border-l text-center text-green-600 font-bold whitespace-nowrap">+{u.direct_addition?.toLocaleString() || 0}</td>
+                    <td className="p-5 border-l text-center text-red-600 font-bold whitespace-nowrap">-{u.direct_deduction?.toLocaleString() || 0}</td>
+                    <td className="p-5 border-l text-center font-bold text-xl text-amber-700 whitespace-nowrap">{u.total?.toLocaleString() || 0}</td>
+                    <td className="p-5 border-l text-center text-sm whitespace-nowrap">
+                      <div>{dayName}، {dateParts.day} {dateParts.month} {dateParts.year}</div>
+                      <div className="text-xs text-gray-500 mt-1">{u.udhar_time || u.created_time || "—"}</div>
+                    </td>
+                    <td className="p-5 border-l text-center text-sm whitespace-nowrap">
+                      {u.status === "paid" ? (
+                        <>
+                          <div>{paidDayName}، {paidDateParts.day} {paidDateParts.month} {paidDateParts.year}</div>
+                          <div className="text-xs text-gray-500 mt-1">{u.paid_time || "—"}</div>
+                        </>
+                      ) : "—"}
+                    </td>
+                    <td className="p-5 border-l text-center whitespace-nowrap">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${u.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {u.status === "paid" ? "✅ ادا شدہ" : "⏳ غیر ادا شدہ"}
+                      </span>
+                    </td>
+                    <td className="p-5 text-center whitespace-nowrap">
+                      <div className="flex gap-2 justify-center items-center">
+                        <button onClick={() => setSelectedUdhar(u)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">👁️ دیکھیں</button>
+                        <button onClick={() => printUdhar(u)} className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">🖨️ پرنٹ</button>
+                        <button onClick={() => setDeleteId(u.udhar_id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-2xl font-medium text-sm transition-all">🗑️ حذف</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan="10" className="p-20 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">
+                      📊
+                    </div>
+                    <p className="text-gray-500 text-lg font-medium">{getEmptyMessage()}</p>
+                    {(search || statusFilter !== "all") && (
+                      <button 
+                        onClick={() => { 
+                          setSearch(""); 
+                          setStatusFilter("all"); 
+                          applyFiltersAndSort();
+                        }} 
+                        className="text-amber-600 hover:text-amber-700 font-bold underline"
+                      >
+                        تمام کسٹمرز دیکھیں
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-4 flex justify-center items-center gap-2 bg-white p-4 rounded-xl shadow">
-          <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="h-8 w-8 rounded-lg border font-bold disabled:opacity-50 bg-white hover:bg-gray-100">←</button>
-          {[...Array(totalPages)].map((_, i) => (<button key={i} onClick={() => setCurrentPage(i + 1)} className={`h-8 w-8 rounded-lg border font-bold ${currentPage === i + 1 ? "bg-amber-600 text-white border-amber-600" : "bg-white hover:bg-gray-100"}`}>{i + 1}</button>))}
-          <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="h-8 w-8 rounded-lg border font-bold disabled:opacity-50 bg-white hover:bg-gray-100">→</button>
+          <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="h-8 w-8 rounded-lg border font-bold disabled:opacity-50 bg-white hover:bg-gray-100 transition-all">→</button>
+          {[...Array(totalPages)].map((_, i) => (<button key={i} onClick={() => setCurrentPage(i + 1)} className={`h-8 w-8 rounded-lg border font-bold transition-all ${currentPage === i + 1 ? "bg-amber-600 text-white border-amber-600" : "bg-white hover:bg-gray-100"}`}>{i + 1}</button>))}
+          <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="h-8 w-8 rounded-lg border font-bold disabled:opacity-50 bg-white hover:bg-gray-100 transition-all">←</button>
         </div>
       )}
 
@@ -729,9 +739,9 @@ function Udhaars({ onItemAdded, onClose }) {
               <div className="text-right"><p className="text-gray-600 text-sm">اسٹیٹس</p><p className={`font-bold text-base ${selectedUdhar.status === "paid" ? "text-emerald-600" : "text-rose-600"}`}>{selectedUdhar.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}</p></div>
             </div>
             <div className="flex gap-4 flex-wrap">
-              <button onClick={() => printUdhar(selectedUdhar)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-3xl font-bold">🖨️ پرنٹ بل</button>
-              {selectedUdhar.status === "unpaid" ? (<button onClick={() => payUdhar(selectedUdhar.customer_name)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-3xl font-bold">💰 ابھی ادا کریں</button>) : (<button disabled className="flex-1 bg-gray-300 text-gray-500 py-4 rounded-3xl font-bold cursor-not-allowed">✅ ادا شدہ</button>)}
-              <button onClick={() => setSelectedUdhar(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 py-4 rounded-3xl font-bold">❌ بند کریں</button>
+              <button onClick={() => printUdhar(selectedUdhar)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-3xl font-bold transition-all">🖨️ پرنٹ بل</button>
+              {selectedUdhar.status === "unpaid" ? (<button onClick={() => payUdhar(selectedUdhar.customer_name)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-3xl font-bold transition-all">💰 ابھی ادا کریں</button>) : (<button disabled className="flex-1 bg-gray-300 text-gray-500 py-4 rounded-3xl font-bold cursor-not-allowed">✅ ادا شدہ</button>)}
+              <button onClick={() => setSelectedUdhar(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 py-4 rounded-3xl font-bold transition-all">❌ بند کریں</button>
             </div>
           </div>
         </div>
@@ -746,8 +756,8 @@ function Udhaars({ onItemAdded, onClose }) {
             <p className="text-gray-500 text-sm mb-6">یہ اُدھار ہمیشہ کے لیے حذف ہو جائے گا۔ اس کے تمام متعلقہ آئٹمز بھی حذف ہو جائیں گے۔</p>
             {deleteError && <div className="mb-4 p-3 rounded-xl text-center bg-red-100 text-red-700 border border-red-400 text-sm">❌ {deleteError}</div>}
             <div className="flex gap-3">
-              <button onClick={handleDeleteUdhar} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700">ہاں، حذف کریں</button>
-              <button onClick={() => { setDeleteId(null); setDeleteError(""); }} className="flex-1 bg-gray-100 text-gray-800 py-3 rounded-xl font-bold hover:bg-gray-200">منسوخ</button>
+              <button onClick={handleDeleteUdhar} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-all">ہاں، حذف کریں</button>
+              <button onClick={() => { setDeleteId(null); setDeleteError(""); }} className="flex-1 bg-gray-100 text-gray-800 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">منسوخ</button>
             </div>
           </div>
         </div>

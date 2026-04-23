@@ -134,14 +134,14 @@ html {
   border-radius: 4px;
 }
 
-/* RTL specific adjustments */
+/* RTL specific adjustments
 [dir="rtl"] .text-left {
   text-align: right;
 }
 
 [dir="rtl"] .text-right {
   text-align: left;
-}
+} */
 
 /* Form input styles */
 input, button {
