@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import axiosInstance from "../utils/axiosInstance";
 
@@ -18,38 +17,59 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
   const fileInputRef = useRef(null);
 
   // Get API endpoint based on feature
-  // In VoiceInput.js - add 'cart' to the feature switch
-const getApiEndpoint = () => {
-  switch (feature) {
-    case "items":
-      return "/voice-process-items";
-    case "udhar-items":
-      return "/voice-process-udhar-items";
-    case "bills":
-      return "/voice-process-bills";
-    case "sales":
-      return "/voice-process-sales";
-    case "udhaar":
-      return "/voice-process-udhaar";  // ← Add this
-    case "cart":
-      return "/voice-process-cart";  // ← Add this
-    default:
-      return "/voice-process-items";
-  }
-};
+  const getApiEndpoint = () => {
+    switch (feature) {
+      case "items":
+        return "/voice-process-items";
+      case "udhar-items":
+        return "/voice-process-udhar-items";
+      case "bills":
+        return "/voice-process-bills";
+      case "sales":
+        return "/voice-process-sales";
+      case "udhaar":
+        return "/voice-process-udhaar";
+      case "cart":
+        return "/voice-process-cart";
+      case "reports":
+        return "/voice-process-reports";
+      default:
+        return "/voice-process-items";
+    }
+  };
 
-// Add to getFeatureTitle
-const getFeatureTitle = () => {
-  switch(feature) {
-    case "items": return "📦 آئٹمز کمانڈ";
-    case "udhaar": return "💰 ادھار کمانڈ";
-    case "bills": return "🧾 بل کمانڈ";
-    case "sales": return "📊 سیلز کمانڈ";
-    case "cart": return "🛒 نقد/بل کمانڈ";  // ← Add this
-    case "udhaar": return "💰 ادھار/کھاتہ کمانڈ"; 
-    default: return "🎤 وائس کمانڈ";
-  }
-};
+  // Get feature title
+  const getFeatureTitle = () => {
+    switch(feature) {
+      case "items": return "📦 آئٹمز کمانڈ";
+      case "udhaar": return "💰 ادھار کمانڈ";
+      case "bills": return "🧾 بل کمانڈ";
+      case "sales": return "📊 سیلز کمانڈ";
+      case "cart": return "🛒 نقد/بل کمانڈ";
+      case "reports": return "📋 رپورٹس کمانڈ";
+      default: return "🎤 وائس کمانڈ";
+    }
+  };
+
+  // Get example text based on feature
+  const getExampleText = () => {
+    switch(feature) {
+      case "items":
+        return "مثالیں: \"10 کلو چاول ڈال دو\" | \"چاول حذف کرو\" | \"چاول تلاش کرو\"";
+      case "udhaar":
+        return "مثالیں: \"علی کے کھاتے میں 20 کلو چاول ڈال دو\" | \"علی کا چاول حذف کرو\" | \"علی کا ادھار تلاش کرو\"";
+      case "bills":
+        return "مثالیں: \"علی کا بل بنا دو\" | \"علی کا بل ادا کرو\" | \"علی کا بل پرنٹ کرو\" | \"علی کا بل دیکھو\"";
+      case "sales":
+        return "مثالیں: \"آج کی سیلز بتاؤ\" | \"کل کی فروخت کتنی تھی\"";
+      case "cart":
+        return "مثالیں: \"کارٹ میں 2 کلو چاول ڈال دو\" | \"کارٹ دکھاؤ\" | \"کارٹ خالی کرو\"";
+      case "reports":
+        return "مثالیں: \"ماہانہ رپورٹ دکھاؤ\" | \"سالانہ سیلز رپورٹ\" | \"سب سے زیادہ فروخت ہونے والی اشیاء\"";
+      default:
+        return "اپنی آواز سے کمانڈ کریں";
+    }
+  };
 
   // Cleanup
   useEffect(() => {
@@ -460,10 +480,7 @@ const getFeatureTitle = () => {
 
           <div className="mt-3 pt-2 border-t text-center">
             <p className="text-xs text-gray-400 font-urdu">
-              {feature === "items" && "مثالیں: \"10 کلو چاول ڈال دو\" | \"چاول حذف کرو\" | \"چاول تلاش کرو\""}
-              {feature === "udhaar" && "مثالیں: \"علی کے کھاتے میں 20 کلو چاول ڈال دو\" | \"علی کا چاول حذف کرو\" | \"علی کا ادھار تلاش کرو\""}
-              {feature === "bills" && "مثالیں: \"10 کلو چاول کا بل بنا دو\""}
-              {feature === "sales" && "مثالیں: \"آج کی سیلز بتاؤ\" | \"کل کی فروخت کتنی تھی\""}
+              {getExampleText()}
             </p>
           </div>
         </div>
