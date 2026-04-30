@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
-import Footer from "../components/Footer";
+// import Footer from "../components/Footer";
 
 function Home() {
   const [isServerRunning, setIsServerRunning] = useState(true);
@@ -128,7 +128,7 @@ function Home() {
             <p className="text-sm text-gray-500">براہ کرم انتظار کریں</p>
           </div>
         </div>
-        <Footer isAuthenticated={isAuthenticated} />
+        {/* <Footer isAuthenticated={isAuthenticated} /> */}
       </div>
     );
   }
@@ -163,7 +163,7 @@ function Home() {
             </div>
           </div>
         </div>
-        <Footer isAuthenticated={isAuthenticated} />
+        {/* <Footer isAuthenticated={isAuthenticated} /> */}
       </div>
     );
   }
@@ -386,7 +386,7 @@ function Home() {
         </section>
       </main>
 
-      <Footer isAuthenticated={isAuthenticated} />
+      {/* <Footer isAuthenticated={isAuthenticated} /> */}
     </div>
   );
 }
