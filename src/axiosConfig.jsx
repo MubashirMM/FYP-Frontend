@@ -36,10 +36,25 @@ axios.interceptors.response.use(
       "/auth/reset-password-confirm",
     ].some((path) => requestUrl.includes(path));
 
-    if (error.response?.status === 401 && token && !isAuthEndpoint) {
-      // Only redirect to login when the user already had a token and it is no longer valid.
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+    if (error.response?.status === 401) {
+      const errorDetail = error.response?.data?.detail || "";
+
+      if (
+        isAuthEndpoint ||
+        errorDetail.includes("credential") ||
+        errorDetail.includes("درست نہیں") ||
+        errorDetail.toLowerCase().includes("invalid")
+      ) {
+        return Promise.reject(error);
+      }
+
+      if (token) {
+        const friendlyMessage = "آپ کا سیشن ختم ہو چکا ہے۔ براہ کرم دوبارہ لاگ ان کریں۔";
+        alert(friendlyMessage);
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return Promise.reject(new Error(friendlyMessage));
+      }
     }
 
     return Promise.reject(error);
