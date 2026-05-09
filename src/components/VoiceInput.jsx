@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import axiosInstance from "../utils/axiosInstance";
+import axios from "../axiosConfig";
 
 function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -196,7 +196,7 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
       setMessage("🎤 آواز پروسیس ہو رہی ہے...");
       
       const endpoint = getApiEndpoint();
-      const response = await axiosInstance.post(endpoint, {
+      const response = await axios.post(endpoint, {
         audio_base64: audio_base64
       });
       

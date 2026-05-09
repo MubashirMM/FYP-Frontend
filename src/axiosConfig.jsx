@@ -26,11 +26,22 @@ axios.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
+    const requestUrl = error.config?.url || "";
+    const token = localStorage.getItem('token');
+    const isAuthEndpoint = [
+      "/auth/login",
+      "/auth/register",
+      "/auth/forgot-password",
+      "/auth/reset-password",
+      "/auth/reset-password-confirm",
+    ].some((path) => requestUrl.includes(path));
+
+    if (error.response?.status === 401 && token && !isAuthEndpoint) {
+      // Only redirect to login when the user already had a token and it is no longer valid.
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
+
     return Promise.reject(error);
   }
 );

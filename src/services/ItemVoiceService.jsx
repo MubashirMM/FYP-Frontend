@@ -1,5 +1,5 @@
 // ItemVoiceService.js - Dedicated service for Item CRUD operations via voice commands
-import axiosInstance from "../utils/axiosInstance";
+import axios from "../axiosConfig";
 
 export class ItemVoiceService {
   constructor(showMsgCallback, refreshItemsCallback) {
@@ -85,7 +85,7 @@ export class ItemVoiceService {
     }
 
     try {
-      const response = await axiosInstance.get(`/items`);
+      const response = await axios.get(`/items`);
       const items = Array.isArray(response.data) ? response.data : response.data?.items || [];
       
       const foundItem = items.find(item => 
@@ -133,7 +133,7 @@ export class ItemVoiceService {
     }
 
     try {
-      const response = await axiosInstance.get(`/items`);
+      const response = await axios.get(`/items`);
       const items = Array.isArray(response.data) ? response.data : response.data?.items || [];
       
       const foundItem = items.find(item => 
@@ -199,7 +199,7 @@ export class ItemVoiceService {
   // Execute actual delete after confirmation
   async executeDelete(deleteId, itemName) {
     try {
-      await axiosInstance.delete(`/items/${deleteId}`);
+      await axios.delete(`/items/${deleteId}`);
       this.showMsg(`✅ "${itemName}" کامیابی سے حذف کر دیا گیا`, "success");
       if (this.refreshItems) await this.refreshItems();
       return true;

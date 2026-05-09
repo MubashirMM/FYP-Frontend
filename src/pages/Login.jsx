@@ -22,11 +22,19 @@ function Login() {
 
   // Email validation function
   const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) return "ای میل درج کریں";
-    if (!emailRegex.test(email)) return "درست ای میل ایڈریس درج کریں (example@domain.com)";
-    return "";
-  };
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  if (!email) return "ای میل درج کریں";
+  if (!emailRegex.test(email)) return "درست ای میل ایڈریس درج کریں (example@domain.com)";
+  
+  // Block three or more consecutive dots
+  if (/\.{3,}/.test(email)) return "ای میل میں لگاتار تین ڈاٹس (۔۔۔) کی اجازت نہیں ہے";
+  
+  // Optional: Block any consecutive dots
+  if (email.includes('..')) return "ای میل میں لگاتار ڈاٹس (..) کی اجازت نہیں ہے";
+  
+  return "";
+};
 
   // Password validation - only check for empty
   const validatePassword = (password) => {
