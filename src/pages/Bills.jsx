@@ -58,7 +58,7 @@ function Bills({ onItemAdded, onClose }) {
       }
       setBills([]);
       setFilteredBills([]);
-    } finally { 
+    } finally {
       setLoading(false);
     }
   };
@@ -67,7 +67,7 @@ function Bills({ onItemAdded, onClose }) {
     try {
       const res = await axios.get(`${API}/shops/`, getAuthHeader());
       if (res.data?.length > 0) setShopInfo(res.data[0]);
-    } catch {}
+    } catch { }
   };
 
   const showMsg = (text, type) => {
@@ -76,12 +76,12 @@ function Bills({ onItemAdded, onClose }) {
   };
 
   // ==================== VOICE COMMAND HANDLERS ====================
-  
+
   const handleVoiceCommand = async (commandJson) => {
     console.log("Voice command received on Bills page:", commandJson);
-    
+
     const voiceService = new BillsVoiceService(showMsg, fetchBills);
-    
+
     await voiceService.processCommand(commandJson, {
       onCreateBill: async (billData) => {
         setVoiceFormData(billData);
@@ -90,7 +90,7 @@ function Bills({ onItemAdded, onClose }) {
       onSearchBill: (customerName) => {
         setSearch(customerName);
         setStatusFilter("all");
-        const filtered = bills.filter(b => 
+        const filtered = bills.filter(b =>
           (b.customer_name || "").toLowerCase().includes(customerName.toLowerCase())
         );
         setFilteredBills(filtered);
@@ -99,11 +99,11 @@ function Bills({ onItemAdded, onClose }) {
       },
       onPayBill: async (customerName) => {
         // Find if customer has unpaid bill
-        const unpaidBill = bills.find(b => 
-          b.customer_name?.toLowerCase() === customerName.toLowerCase() && 
+        const unpaidBill = bills.find(b =>
+          b.customer_name?.toLowerCase() === customerName.toLowerCase() &&
           b.status === "unpaid"
         );
-        
+
         if (unpaidBill) {
           await payBill(customerName);
         } else {
@@ -111,7 +111,7 @@ function Bills({ onItemAdded, onClose }) {
         }
       },
       onPrintBill: (customerName) => {
-        const foundBill = bills.find(b => 
+        const foundBill = bills.find(b =>
           b.customer_name?.toLowerCase() === customerName.toLowerCase()
         );
         if (foundBill) {
@@ -161,7 +161,7 @@ function Bills({ onItemAdded, onClose }) {
     try {
       await axios.delete(`${API}/bills/${deleteId}`, getAuthHeader());
       showMsg("✅ بل کامیابی سے حذف کر دیا گیا", "success");
-      setDeleteId(null); 
+      setDeleteId(null);
       fetchBills();
       if (onItemAdded) onItemAdded();
     } catch (err) {
@@ -170,7 +170,7 @@ function Bills({ onItemAdded, onClose }) {
     }
   };
 
- const printBill = (bill) => {
+  const printBill = (bill) => {
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html dir="rtl"><head><title>بل - ${bill.customer_name}</title>
@@ -252,7 +252,7 @@ function Bills({ onItemAdded, onClose }) {
     `);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 500);
-};
+  };
 
   useEffect(() => {
     fetchBills();
@@ -262,17 +262,17 @@ function Bills({ onItemAdded, onClose }) {
 
   const applyFiltersAndSort = () => {
     let filtered = [...bills];
-    
+
     if (statusFilter !== "all") {
       filtered = filtered.filter(b => b.status === statusFilter);
     }
-    
+
     if (search) {
-      filtered = filtered.filter(b => 
+      filtered = filtered.filter(b =>
         (b.customer_name || "").toLowerCase().includes(search.toLowerCase())
       );
     }
-    
+
     filtered.sort((a, b) => {
       let aVal, bVal;
       if (sortBy === "customer") {
@@ -285,14 +285,14 @@ function Bills({ onItemAdded, onClose }) {
         aVal = `${a.bill_year}-${a.bill_month}-${a.bill_day}`;
         bVal = `${b.bill_year}-${b.bill_month}-${b.bill_day}`;
       }
-      
+
       if (sortOrder === "asc") {
         return aVal > bVal ? 1 : -1;
       } else {
         return aVal < bVal ? 1 : -1;
       }
     });
-    
+
     setFilteredBills(filtered);
     setCurrentPage(1);
   };
@@ -389,15 +389,15 @@ function Bills({ onItemAdded, onClose }) {
             </button>
           </div>
         </div>
-        
+
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <form onSubmit={handleSearchSubmit} className="flex-1">
-            <input 
-              type="text" 
-              placeholder="🔍 کسٹمر نام سے تلاش کریں..." 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
-              className="w-full p-4 border-2 border-gray-200 rounded-3xl focus:border-blue-500 outline-none text-right" 
+            <input
+              type="text"
+              placeholder="🔍 کسٹمر نام سے تلاش کریں..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full p-4 border-2 border-gray-200 rounded-3xl focus:border-blue-500 outline-none text-right"
             />
           </form>
           <div className="flex gap-2 flex-wrap">
@@ -424,14 +424,14 @@ function Bills({ onItemAdded, onClose }) {
             </tr>
           </thead>
           <tbody>
-            {loading ? 
+            {loading ?
               <tr><td colSpan="8" className="p-20 text-center text-gray-400">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                   <span>لوڈ ہو رہا ہے...</span>
                 </div>
-               </td></tr>
-              : currentItems.length > 0 ? 
+              </td></tr>
+              : currentItems.length > 0 ?
                 currentItems.map(bill => (
                   <tr key={bill.bill_id} className="border-b hover:bg-blue-50 transition-colors">
                     <td className="p-5 border-l font-bold whitespace-nowrap">{bill.customer_name}</td>
@@ -460,21 +460,21 @@ function Bills({ onItemAdded, onClose }) {
                     </td>
                   </tr>
                 ))
-              : (
-                <tr>
-                  <td colSpan="8" className="p-20 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">📋</div>
-                      <p className="text-gray-500 text-lg font-medium">{getEmptyMessage()}</p>
-                      {(search || statusFilter !== "all") && (
-                        <button onClick={() => { setSearch(""); setStatusFilter("all"); applyFiltersAndSort(); }} className="text-blue-600 hover:text-blue-700 font-bold underline">
-                          تمام بل دیکھیں
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
+                : (
+                  <tr>
+                    <td colSpan="8" className="p-20 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">📋</div>
+                        <p className="text-gray-500 text-lg font-medium">{getEmptyMessage()}</p>
+                        {(search || statusFilter !== "all") && (
+                          <button onClick={() => { setSearch(""); setStatusFilter("all"); applyFiltersAndSort(); }} className="text-blue-600 hover:text-blue-700 font-bold underline">
+                            تمام بل دیکھیں
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
             }
           </tbody>
         </table>
@@ -494,9 +494,8 @@ function Bills({ onItemAdded, onClose }) {
             <button
               key={i}
               onClick={() => setCurrentPage(i + 1)}
-              className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${
-                currentPage === i + 1 ? "bg-blue-600 text-white border-blue-600" : "bg-white hover:bg-gray-100"
-              }`}
+              className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${currentPage === i + 1 ? "bg-blue-600 text-white border-blue-600" : "bg-white hover:bg-gray-100"
+                }`}
             >
               {i + 1}
             </button>
@@ -587,13 +586,13 @@ function Bills({ onItemAdded, onClose }) {
             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">⚠️</div>
             <h3 className="text-xl font-bold mb-2">کیا آپ کو یقین ہے؟</h3>
             <p className="text-gray-500 text-sm mb-6">یہ بل ہمیشہ کے لیے حذف ہو جائے گا۔</p>
-            
+
             {deleteError && (
               <div className="mb-4 p-3 rounded-xl text-center bg-red-100 text-red-700 border border-red-400 text-sm">
                 ❌ {deleteError}
               </div>
             )}
-            
+
             <div className="flex gap-3">
               <button onClick={handleDeleteBill} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 text-sm transition-all">
                 ہاں، حذف کریں
