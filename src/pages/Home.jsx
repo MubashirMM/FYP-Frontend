@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
-// import Footer from "../components/Footer";
+import Footer from "../components/Footer";
 
 function Home() {
   const [isServerRunning, setIsServerRunning] = useState(true);
@@ -115,7 +115,7 @@ function Home() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header isAuthenticated={isAuthenticated} user={user} />
-        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100">
+        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 pb-20 mt-10">
           <div className="text-center space-y-4">
             <div className="relative mx-auto w-20 h-20">
               <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
@@ -128,53 +128,75 @@ function Home() {
             <p className="text-sm text-gray-500">براہ کرم انتظار کریں</p>
           </div>
         </div>
-        {/* <Footer isAuthenticated={isAuthenticated} /> */}
+        <Footer isAuthenticated={isAuthenticated} />
       </div>
     );
   }
 
-  if (!isServerRunning) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header isAuthenticated={isAuthenticated} user={user} />
-        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 p-4">
-          <div className="text-center space-y-6 max-w-md bg-white p-8 rounded-3xl shadow-xl border border-red-100">
-            <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center animate-pulse">
-              <span className="text-4xl">⚠️</span>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-800 font-urdu">سرور کنیکٹ نہیں ہو رہا</h2>
-            <p className="text-gray-600 font-urdu">{errorMessage}</p>
-            <p className="text-sm text-gray-500">براہ کرم یقینی بنائیں کہ بیک اینڈ سرور چل رہا ہے</p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={checkServerConnection}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all font-urdu shadow-lg hover:shadow-xl"
-              >
-                🔄 دوبارہ کوشش کریں
-              </button>
-              <a
-                href="http://localhost:8000/docs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-purple-500 hover:text-purple-600 transition-all font-urdu"
-              >
-                📚 API Docs
-              </a>
-            </div>
-          </div>
-        </div>
-        {/* <Footer isAuthenticated={isAuthenticated} /> */}
-      </div>
-    );
-  }
-
+  // Always show the main content, but with a persistent banner when server is down
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-gray-100">
       <Header isAuthenticated={isAuthenticated} user={user} />
 
+      {/* Persistent Server Error Banner - Shows when server is not running */}
+      {!isServerRunning && (
+        <div className="sticky top-0 z-40 bg-red-600 text-white shadow-lg animate-slide-down">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="animate-pulse">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <div>
+                  <p className="font-bold font-urdu text-sm md:text-base">سرور کام نہیں کر رہا!</p>
+                  <p className="text-xs md:text-sm text-red-100 font-urdu">{errorMessage || "API سرور سے رابطہ منقطع ہے"}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={checkServerConnection}
+                  className="px-3 md:px-4 py-1.5 md:py-2 bg-white text-red-600 rounded-lg hover:bg-red-50 transition-all text-xs md:text-sm font-bold flex items-center gap-2"
+                >
+                  <span>🔄</span> دوبارہ چیک کریں
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-3 md:px-4 py-1.5 md:py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-all text-xs md:text-sm"
+                >
+                  پیج ری لوڈ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Banner - Shows when server starts running again */}
+      {isServerRunning && errorMessage === "" && !isLoading && (
+        <div className="sticky top-0 z-40 bg-green-600 text-white shadow-lg animate-slide-down">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">✅</span>
+                <div>
+                  <p className="font-bold font-urdu text-sm md:text-base">سرور چل رہا ہے!</p>
+                  <p className="text-xs md:text-sm text-green-100 font-urdu">تمام فیچرز دستیاب ہیں</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setErrorMessage("dismiss")}
+                className="text-white hover:text-green-100 transition-colors text-xl"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="flex-1">
         {/* ===== HERO SECTION ===== */}
-        <section className="relative overflow-hidden">
+        <section className="relative overflow-hidden pt-8 md:pt-12">
           {/* Background Decorations */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
@@ -182,25 +204,30 @@ function Home() {
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
           </div>
 
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
             {/* Header */}
             <div className="text-center mb-12 md:mb-16">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-full mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-full mb-8">
                 <span className="text-lg">✨</span>
                 <span className="text-sm font-medium text-purple-700 font-urdu">اردو وائس سپورٹ کے ساتھ</span>
               </div>
 
-              <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-8 font-urdu leading-snug">
-                <span className="block mb-2">360 آسان اسٹور</span>
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 py-2">
+              {/* Added more space between and around the titles */}
+              <div>
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 font-urdu leading-relaxed mb-8">
+                  360 آسان اسٹور
+                </h1>
+                <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 font-urdu leading-relaxed pt-4 pb-4">
                   سمارٹ مینجمنٹ سسٹم
-                </span>
-              </h1>
+                </h2>
+              </div>
 
-              <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto font-urdu leading-relaxed">
-                آواز کے ذریعے ادھار، بل، اور آئٹمز مینج کریں۔
-                <span className="text-purple-600 font-semibold">آسان، تیز، اور جدید</span>
-              </p>
+              <div className="mt-12 md:mt-16">
+                <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto font-urdu leading-relaxed">
+                  آواز کے ذریعے ادھار، بل، اور آئٹمز مینج کریں۔
+                  <span className="text-purple-600 font-semibold">آسان، تیز، اور جدید</span>
+                </p>
+              </div>
             </div>
 
             {/* Quick Action Buttons */}
@@ -284,8 +311,8 @@ function Home() {
                         <span
                           key={idx}
                           className={`px-3 py-1 text-xs rounded-full font-medium font-urdu transition-colors ${activeFeature === card.id
-                              ? 'bg-purple-100 text-purple-700'
-                              : 'bg-gray-100 text-gray-600 group-hover:bg-purple-50 group-hover:text-purple-600'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-gray-100 text-gray-600 group-hover:bg-purple-50 group-hover:text-purple-600'
                             }`}
                         >
                           {feature}
@@ -385,7 +412,7 @@ function Home() {
         </section>
       </main>
 
-      {/* <Footer isAuthenticated={isAuthenticated} /> */}
+      <Footer isAuthenticated={isAuthenticated} />
     </div>
   );
 }
