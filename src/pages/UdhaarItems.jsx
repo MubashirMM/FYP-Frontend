@@ -62,9 +62,9 @@ function UdhaarItems({ onItemAdded, onClose }) {
 
   const handleVoiceCommand = async (commandJson) => {
     console.log("Voice command received on Udhaar page:", commandJson);
-    
+
     const voiceService = new UdhaarItemsVoiceService(showMsg, fetchUdhaarItems);
-    
+
     await voiceService.processCommand(commandJson, {
       onShowAddForm: (formData) => {
         setCurrentItem(null);
@@ -81,25 +81,25 @@ function UdhaarItems({ onItemAdded, onClose }) {
       },
       onSearch: (searchTerm) => {
         setSearch(searchTerm);
-        const filtered = udhaarItems.filter(item => 
+        const filtered = udhaarItems.filter(item =>
           item.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
         );
         setFilteredItems(filtered);
         setCurrentPage(1);
       },
-      onOpenUdhaarPopup: () => {}
+      onOpenUdhaarPopup: () => { }
     });
   };
 
   const handleSearchChange = (e) => {
     const searchTerm = e.target.value;
     setSearch(searchTerm);
-    
+
     if (!searchTerm.trim()) {
       setFilteredItems(udhaarItems);
     } else {
-      const filtered = udhaarItems.filter(item => 
+      const filtered = udhaarItems.filter(item =>
         item.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -110,7 +110,7 @@ function UdhaarItems({ onItemAdded, onClose }) {
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
-    
+
     try {
       await axios.delete(`${API}/udhar-items/${deleteConfirm.id}`, getAuthHeader());
       showMsg(`✅ "${deleteConfirm.customer}" کا "${deleteConfirm.name}" کامیابی سے حذف کر دیا گیا`, "success");
@@ -203,16 +203,16 @@ function UdhaarItems({ onItemAdded, onClose }) {
 
               <div className="flex gap-3 w-full md:w-auto">
                 <div className="relative flex-1">
-                  <input 
+                  <input
                     type="text"
-                    placeholder="🔍 کسٹمر یا آئٹم تلاش کریں..." 
-                    value={search} 
+                    placeholder="🔍 کسٹمر یا آئٹم تلاش کریں..."
+                    value={search}
                     onChange={handleSearchChange}
                     className="w-full md:w-80 p-3 border-2 border-gray-200 rounded-xl bg-white focus:border-amber-500 focus:outline-none text-sm font-urdu text-right"
                   />
                 </div>
-                <button 
-                  onClick={handleAddNew} 
+                <button
+                  onClick={handleAddNew}
                   className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all"
                 >
                   + نیا ادھار
@@ -221,24 +221,25 @@ function UdhaarItems({ onItemAdded, onClose }) {
             </div>
           </div>
 
-          {/* Table container - removed max-h limit for better spacing */}
           <div className="overflow-x-auto">
             <table className="w-full text-right">
               <thead className="bg-gray-100 border-b sticky top-0">
                 <tr>
-                  <th className="p-4 border-l font-bold text-gray-700">👤 کسٹمر</th>
-                  <th className="p-4 border-l font-bold text-gray-700">📦 آئٹم</th>
-                  <th className="p-4 border-l font-bold text-gray-700 text-center">🔢 مقدار</th>
-                  <th className="p-4 border-l font-bold text-gray-700 text-center">📏 اکائی</th>
-                  <th className="p-4 border-l font-bold text-gray-700 text-center">💰 کل رقم</th>
-                  <th className="p-4 border-l font-bold text-gray-700 text-center">📅 تاریخ</th>
-                  <th className="p-4 text-center font-bold text-gray-700">⚙️ انتخاب</th>
+                  <th className="p-4 border-l font-bold text-gray-700 text-right font-urdu">👤 کسٹمر</th>
+                  <th className="p-4 border-l font-bold text-gray-700 text-right font-urdu">📦 آئٹم</th>
+                  <th className="p-4 border-l font-bold text-gray-700 text-center font-urdu">🔢 مقدار (بنیادی اکائی)</th>
+                  <th className="p-4 border-l font-bold text-gray-700 text-center font-urdu">📏 اکائی (فروخت)</th>
+                  <th className="p-4 border-l font-bold text-gray-700 text-center font-urdu">💰 قیمت فی اکائی</th>
+                  <th className="p-4 border-l font-bold text-gray-700 text-center font-urdu">💰 کل رقم</th>
+                  <th className="p-4 border-l font-bold text-gray-700 text-center font-urdu">📅 تاریخ</th>
+                  <th className="p-4 border-l font-bold text-gray-700 text-center font-urdu">⏰ وقت</th>
+                  <th className="p-4 text-center font-bold text-gray-700 font-urdu">⚙️ انتخاب</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="p-16 text-center text-gray-400">
+                    <td colSpan="9" className="p-16 text-center text-gray-400 font-urdu">
                       <div className="flex flex-col items-center gap-2">
                         <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
                         <span>ڈیٹا لوڈ ہو رہا ہے...</span>
@@ -248,42 +249,57 @@ function UdhaarItems({ onItemAdded, onClose }) {
                 ) : currentItems.length > 0 ? (
                   currentItems.map((item) => (
                     <tr key={item.udharitem_id} className="border-b hover:bg-amber-50/50 transition-colors">
-                      <td className="p-4 border-l font-bold text-gray-800 text-right">{item.customer_name}</td>
-                      <td className="p-4 border-l text-gray-600 text-right">{item.item_name}</td>
-                      <td className="p-4 border-l text-center font-mono font-bold">{item.quantity}</td>
-                      <td className="p-4 border-l text-center text-gray-600">{item.requested_unit || item.unit}</td>
-                      <td className="p-4 border-l text-center font-mono text-amber-700 font-bold">Rs. {item.total_amount?.toLocaleString() || 0}</td>
-                      <td className="p-4 border-l text-center text-sm text-gray-600">{item.udhar_day}/{item.udhar_month}/{item.udhar_year}</td>
+                      <td className="p-4 border-l font-bold text-gray-800 text-right font-urdu">{item.customer_name}</td>
+                      <td className="p-4 border-l text-gray-600 text-right font-urdu">{item.item_name}</td>
+                      <td className="p-4 border-l text-center font-urdu">
+                        <span className="font-bold">{item.base_unit_quantity || item.quantity}</span>
+                        <span className="text-gray-600 mr-1">{item.base_unit || "عدد"}</span>
+                      </td>
+                      <td className="p-4 border-l text-center text-gray-600 font-urdu">
+                        {item.requested_unit || item.unit} ({item.quantity})
+                      </td>
+                      <td className="p-4 border-l text-center font-urdu">
+                        <span className="font-mono font-bold text-blue-700">Rs. {item.unit_price?.toLocaleString() || 0}</span>
+                      </td>
+                      <td className="p-4 border-l text-center font-urdu">
+                        <span className="font-mono font-bold text-amber-700">Rs. {item.total_amount?.toLocaleString() || 0}</span>
+                      </td>
+                      <td className="p-4 border-l text-center text-sm text-gray-600 font-urdu">
+                        {item.udhar_day}/{item.udhar_month}/{item.udhar_year}
+                      </td>
+                      <td className="p-4 border-l text-center text-sm text-gray-600 font-urdu">
+                        {item.udhar_time || (item.udhar_day_name ? `${item.udhar_day_name}` : "---")}
+                      </td>
                       <td className="p-4 text-center">
                         <div className="flex justify-center gap-4">
-                          <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 transition-all">✏️ ترمیم</button>
-                          <button onClick={() => setDeleteConfirm({ 
-                            id: item.udharitem_id, 
+                          <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 transition-all font-urdu">✏️ ترمیم</button>
+                          <button onClick={() => setDeleteConfirm({
+                            id: item.udharitem_id,
                             name: item.item_name,
                             customer: item.customer_name,
                             quantity: item.quantity,
                             unit: item.requested_unit || item.unit,
                             totalAmount: item.total_amount
-                          })} className="text-red-600 hover:text-red-900 transition-all">🗑️ حذف</button>
+                          })} className="text-red-600 hover:text-red-900 transition-all font-urdu">🗑️ حذف</button>
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="p-16 text-center">
+                    <td colSpan="9" className="p-16 text-center font-urdu">
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-4xl">📋</div>
-                        <p className="text-gray-500 text-lg font-medium">
+                        <p className="text-gray-500 text-lg font-medium font-urdu">
                           {search ? `"${search}" کے نام سے کوئی ادھار نہیں ملا` : "کوئی ادھار آئٹم موجود نہیں ہے"}
                         </p>
                         {search && (
-                          <button onClick={() => { setSearch(""); fetchUdhaarItems(); }} className="text-amber-600 hover:text-amber-700 font-bold underline">
+                          <button onClick={() => { setSearch(""); fetchUdhaarItems(); }} className="text-amber-600 hover:text-amber-700 font-bold underline font-urdu">
                             تمام ادھار دیکھیں
                           </button>
                         )}
                         {!search && udhaarItems.length === 0 && (
-                          <button onClick={handleAddNew} className="mt-2 bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all">
+                          <button onClick={handleAddNew} className="mt-2 bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all font-urdu">
                             + نیا ادھار شامل کریں
                           </button>
                         )}
@@ -295,7 +311,6 @@ function UdhaarItems({ onItemAdded, onClose }) {
             </table>
           </div>
 
-          {/* Pagination - with proper RTL arrows */}
           {totalPages > 1 && currentItems.length > 0 && (
             <div className="p-4 flex justify-center gap-2 bg-gray-50 border-t">
               <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50 hover:bg-gray-100 transition-all">→</button>
@@ -307,10 +322,10 @@ function UdhaarItems({ onItemAdded, onClose }) {
           )}
         </div>
       ) : (
-        <UdhaarItemForm 
+        <UdhaarItemForm
           mode={getFormMode()}
-          initialData={getFormInitialData()} 
-          onCancel={() => handleFormClose(false)} 
+          initialData={getFormInitialData()}
+          onCancel={() => handleFormClose(false)}
           onSave={() => handleFormClose(true)}
           showMsg={showMsg}
           availableItems={availableItems}
@@ -338,7 +353,7 @@ function UdhaarItems({ onItemAdded, onClose }) {
 }
 
 // ============================================
-// UdhaarItemForm Component - Fixed with text-right
+// UdhaarItemForm Component - FIXED VERSION
 // ============================================
 function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availableItems = [] }) {
   const [formData, setFormData] = useState({
@@ -351,6 +366,7 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -399,7 +415,7 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
 
     try {
       const config = { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } };
-      
+
       if (mode === "ADD") {
         await axios.post(`${API}/udhar-items`, payload, config);
         showMsg("✅ ادھار آئٹم شامل کر دیا گیا", "success");
@@ -407,7 +423,7 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
         await axios.put(`${API}/udhar-items/${initialData.udharitem_id}`, payload, config);
         showMsg("✅ ادھار آئٹم اپ ڈیٹ ہو گیا", "success");
       }
-      
+
       setTimeout(() => onSave(), 1500);
     } catch (err) {
       showMsg(err.response?.data?.detail || "ڈیٹا محفوظ کرنے میں ناکامی", "error");
@@ -427,29 +443,30 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
           <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
             کسٹمر کا نام <span className="text-red-500">*</span>
           </label>
-          <input 
+          <input
             type="text"
-            className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${
-              errors.customer_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
-            }`}
-            value={formData.customer_name} 
-            onChange={e => setFormData({...formData, customer_name: e.target.value})} 
+            className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${errors.customer_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
+              }`}
+            value={formData.customer_name}
+            onChange={e => setFormData({ ...formData, customer_name: e.target.value })}
             placeholder="مثال: محمد علی"
           />
           {errors.customer_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.customer_name}</p>}
         </div>
 
-        {/* Item Name - Select Dropdown */}
+        {/* Item Name - Select Dropdown with fixed options visibility */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
             آئٹم کا نام <span className="text-red-500">*</span>
           </label>
-          <select 
-            className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${
-              errors.item_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
-            }`}
-            value={formData.item_name} 
-            onChange={e => setFormData({...formData, item_name: e.target.value})}
+          <select
+            className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${errors.item_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
+              }`}
+            value={formData.item_name}
+            onChange={e => setFormData({ ...formData, item_name: e.target.value })}
+            onClick={() => setIsDropdownOpen(true)}
+            onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+            size={isDropdownOpen ? Math.min(5, availableItems.length + 1) : 1}
           >
             <option value="" disabled>-- آئٹم منتخب کریں --</option>
             {availableItems.map(item => (
@@ -470,14 +487,13 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
               مقدار <span className="text-red-500">*</span>
             </label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               step="0.01"
-              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${
-                errors.quantity ? 'border-red-500 bg-red-50' : 'border-gray-200'
-              }`}
-              value={formData.quantity} 
-              onChange={e => setFormData({...formData, quantity: e.target.value})} 
+              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${errors.quantity ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                }`}
+              value={formData.quantity}
+              onChange={e => setFormData({ ...formData, quantity: e.target.value })}
               placeholder="مثال: 50"
             />
             {errors.quantity && <p className="text-red-600 text-sm mt-1 text-right">{errors.quantity}</p>}
@@ -487,12 +503,11 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
               اکائی <span className="text-red-500">*</span>
             </label>
-            <select 
-              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${
-                errors.unit ? 'border-red-500' : 'border-gray-200'
-              }`}
-              value={formData.unit} 
-              onChange={e => setFormData({...formData, unit: e.target.value, custom_unit: ""})}
+            <select
+              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${errors.unit ? 'border-red-500' : 'border-gray-200'
+                }`}
+              value={formData.unit}
+              onChange={e => setFormData({ ...formData, unit: e.target.value, custom_unit: "" })}
             >
               <option value="" disabled>-- منتخب کریں --</option>
               {ALLOWED_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -508,11 +523,11 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
               اپنی اکائی لکھیں <span className="text-red-500">*</span>
             </label>
-            <input 
+            <input
               type="text"
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors"
-              value={formData.custom_unit} 
-              onChange={e => setFormData({...formData, custom_unit: e.target.value})} 
+              value={formData.custom_unit}
+              onChange={e => setFormData({ ...formData, custom_unit: e.target.value })}
               placeholder="مثال: پیکٹ, ڈبہ, گٹھلی"
             />
           </div>
@@ -520,16 +535,16 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
 
         {/* Buttons */}
         <div className="flex gap-3 pt-6">
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={isSubmitting}
             className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-xl font-bold transition-colors disabled:bg-amber-400 text-base"
           >
             {isSubmitting ? "محفوظ ہو رہا ہے..." : "💾 محفوظ کریں"}
           </button>
-          <button 
-            type="button" 
-            onClick={onCancel} 
+          <button
+            type="button"
+            onClick={onCancel}
             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-colors text-base"
           >
             ✕ منسوخ کریں
