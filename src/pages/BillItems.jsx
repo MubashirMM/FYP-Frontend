@@ -40,9 +40,11 @@ function BillItems({ onItemAdded, onClose }) {
   const [voiceFormData, setVoiceFormData] = useState(null);
   const [voiceDeleteData, setVoiceDeleteData] = useState(null);
 
-  // For "add items" section - available items (mock data)
+  // For "add items" section - REAL items from API
   const [availableItems, setAvailableItems] = useState([]);
+  const [filteredAvailableItems, setFilteredAvailableItems] = useState([]);
   const [availableItemsSearch, setAvailableItemsSearch] = useState("");
+  const [itemsLoading, setItemsLoading] = useState(false);
 
   const getAuthHeader = () => ({
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
@@ -64,11 +66,29 @@ function BillItems({ onItemAdded, onClose }) {
     } catch { }
   };
 
+  // Fetch available items from API
+  const fetchAvailableItems = async () => {
+    setItemsLoading(true);
+    try {
+      const res = await axios.get(`${API}/items`, getAuthHeader());
+      const data = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      setAvailableItems(data);
+      setFilteredAvailableItems(data);
+    } catch (err) {
+      console.error("Failed to fetch items", err);
+      showMsg("آئٹمز لوڈ کرنے میں خرابی", "error");
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
   const showMsg = (text, type) => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: "", type: "" }), 3000);
   };
+
   const fetchCartItems = () => { return cartItems; };
+
   // Initialize voice service
   const [voiceService] = useState(() => new CartItemsVoiceService(showMsg, fetchCartItems));
 
@@ -238,12 +258,12 @@ function BillItems({ onItemAdded, onClose }) {
           <tbody>
             ${billData.items?.map(item => `
               <tr><td style="text-align:right">${item.item_name}</td>
-              <td>${item.quantity}</td>
-              <td>${item.requested_unit}</td>
-              <td>${item.unit_price}</td>
-              <td>${item.total_amount}</td>
-            </tr>
-            `).join('') || '<tr><td colspan="5">کوئی آئٹم نہیں</td></tr>'}
+               <td>${item.quantity}</td>
+               <td>${item.requested_unit}</td>
+               <td>${item.unit_price}</td>
+               <td>${item.total_amount}</td>
+             </tr>
+            `).join('') || ' etxek<td colspan="5">کوئی آئٹم نہیں</td></tr>'}
           </tbody>
         </table>
         <div class="total-box"><div class="total-label">کل قابل ادائیگی</div><div class="total-value">${billData.total_amount?.toLocaleString()} روپے</div></div>
@@ -266,6 +286,21 @@ function BillItems({ onItemAdded, onClose }) {
         item.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredItems(filtered);
+    }
+  };
+
+  // Handle search for available items
+  const handleAvailableItemsSearch = (e) => {
+    const searchTerm = e.target.value;
+    setAvailableItemsSearch(searchTerm);
+
+    if (!searchTerm.trim()) {
+      setFilteredAvailableItems(availableItems);
+    } else {
+      const filtered = availableItems.filter(item =>
+        item.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredAvailableItems(filtered);
     }
   };
 
@@ -337,31 +372,6 @@ function BillItems({ onItemAdded, onClose }) {
     if (onItemAdded) onItemAdded();
   };
 
-  // Update cart item quantity (for direct input)
-  const handleUpdateQuantity = (item, newQuantity) => {
-    const quantity = Math.max(0, newQuantity);
-    if (quantity === 0) {
-      const updatedCart = cartItems.filter(cartItem => cartItem.id !== item.id);
-      setCartItems(updatedCart);
-      setFilteredItems(updatedCart);
-      showMsg(`✅ ${item.item_name} کارٹ سے حذف کر دیا گیا`, "success");
-    } else {
-      const updatedCart = cartItems.map(cartItem =>
-        cartItem.id === item.id
-          ? {
-            ...cartItem,
-            quantity: quantity,
-            total_amount: quantity * cartItem.unit_price
-          }
-          : cartItem
-      );
-      setCartItems(updatedCart);
-      setFilteredItems(updatedCart);
-      showMsg(`✅ ${item.item_name} کی مقدار ${quantity} کر دی گئی`, "success");
-    }
-    if (onItemAdded) onItemAdded();
-  };
-
   // Remove item from cart
   const handleRemoveFromCart = (item) => {
     const updatedCart = cartItems.filter(cartItem => cartItem.id !== item.id);
@@ -391,10 +401,10 @@ function BillItems({ onItemAdded, onClose }) {
       setFilteredItems(updatedCart);
       showMsg(`✅ ${item.item_name} کی تعداد بڑھا دی گئی (اب ${newQuantity})`, "success");
     } else {
-      // Add new item with default price
+      // Add new item with price from database
       const newItem = createLocalCartItem({
         item_name: item.item_name,
-        requested_unit: item.base_unit || "عدد",
+        requested_unit: item.item_unit || "عدد",
         quantity: 1,
         unit_price: item.unit_price || 0
       });
@@ -406,25 +416,40 @@ function BillItems({ onItemAdded, onClose }) {
     if (onItemAdded) onItemAdded();
   };
 
-  // Add custom item from form
-  const addCustomItemToCart = (formData) => {
+  // Add custom item from form with validation
+  const addCustomItemToCart = async (formData) => {
     const finalUnit = formData.requested_unit === "__custom"
       ? formData.custom_unit
       : formData.requested_unit;
 
-    const existingItem = cartItems.find(cartItem => cartItem.item_name === formData.item_name);
-    const existingAvailableItem = availableItems.find(item => item.item_name === formData.item_name);
-    const unitPrice = existingAvailableItem?.unit_price || 0;
+    // VALIDATION 1: Check if item exists in database
+    const existingItemInDB = availableItems.find(
+      item => item.item_name.toLowerCase() === formData.item_name.toLowerCase()
+    );
 
-    if (existingItem) {
-      // Item already exists - increase quantity
-      const newQuantity = existingItem.quantity + Number(formData.quantity);
+    if (!existingItemInDB) {
+      showMsg(`❌ "${formData.item_name}" موجود نہیں ہے - پہلے آئٹمز میں شامل کریں`, "error");
+      return;
+    }
+
+    // VALIDATION 2: Check if unit matches the item's unit from database
+    if (existingItemInDB.item_unit !== finalUnit) {
+      showMsg(`❌ "${formData.item_name}" کی اکائی "${existingItemInDB.item_unit}" ہے - "${finalUnit}" نہیں`, "error");
+      return;
+    }
+
+    // If validation passes, add to cart
+    const existingItemInCart = cartItems.find(cartItem => cartItem.item_name === formData.item_name);
+
+    if (existingItemInCart) {
+      // Item already exists in cart - increase quantity
+      const newQuantity = existingItemInCart.quantity + Number(formData.quantity);
       const updatedCart = cartItems.map(cartItem =>
-        cartItem.id === existingItem.id
+        cartItem.id === existingItemInCart.id
           ? {
             ...cartItem,
             quantity: newQuantity,
-            total_amount: newQuantity * cartItem.unit_price
+            total_amount: newQuantity * existingItemInDB.unit_price
           }
           : cartItem
       );
@@ -432,12 +457,12 @@ function BillItems({ onItemAdded, onClose }) {
       setFilteredItems(updatedCart);
       showMsg(`✅ ${formData.item_name} کی تعداد بڑھا دی گئی (اب ${newQuantity})`, "success");
     } else {
-      // Add new item
+      // Add new item to cart
       const newItem = createLocalCartItem({
         item_name: formData.item_name,
         requested_unit: finalUnit,
         quantity: Number(formData.quantity),
-        unit_price: unitPrice
+        unit_price: existingItemInDB.unit_price
       });
       const updatedCart = [...cartItems, newItem];
       setCartItems(updatedCart);
@@ -469,35 +494,14 @@ function BillItems({ onItemAdded, onClose }) {
     await voiceService.processCommand(commandData, voiceCallbacks);
   };
 
-  // Initialize available items (mock data)
-  const initAvailableItems = () => {
-    setAvailableItems([
-      { id: 1, item_name: "انڈے", base_unit: "عدد", unit_price: 15 },
-      { id: 2, item_name: "دودھ", base_unit: "لیٹر", unit_price: 120 },
-      { id: 3, item_name: "چاول", base_unit: "کلو", unit_price: 180 },
-      { id: 4, item_name: "چینی", base_unit: "کلو", unit_price: 110 },
-      { id: 5, item_name: "آٹا", base_unit: "کلو", unit_price: 90 },
-      { id: 6, item_name: "تیل", base_unit: "لیٹر", unit_price: 220 },
-      { id: 7, item_name: "بسکٹ", base_unit: "پیکٹ", unit_price: 50 },
-      { id: 8, item_name: "صابن", base_unit: "عدد", unit_price: 85 },
-      { id: 9, item_name: "چائے پتی", base_unit: "پیکٹ", unit_price: 250 },
-      { id: 10, item_name: "نمک", base_unit: "کلو", unit_price: 40 },
-    ]);
-  };
-
   useEffect(() => {
     fetchShopInfo();
     fetchUser();
-    initAvailableItems();
+    fetchAvailableItems(); // Fetch real items from API
   }, []);
 
   const totalCartAmount = cartItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
   const totalCartItems = cartItems.length;
-
-  // Filter available items based on search
-  const filteredAvailableItems = availableItems.filter(item =>
-    item.item_name?.toLowerCase().includes(availableItemsSearch.toLowerCase())
-  );
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-3 md:p-6" dir="rtl">
@@ -624,6 +628,7 @@ function BillItems({ onItemAdded, onClose }) {
                 setVoiceFormData(null);
               }}
               showMsg={showMsg}
+              availableItems={availableItems}
             />
           </div>
         </div>
@@ -646,23 +651,28 @@ function BillItems({ onItemAdded, onClose }) {
                 type="text"
                 placeholder="🔍 آئٹم نام سے تلاش کریں..."
                 value={availableItemsSearch}
-                onChange={(e) => setAvailableItemsSearch(e.target.value)}
+                onChange={handleAvailableItemsSearch}
                 className="w-full p-3 pr-10 border-2 border-gray-200 rounded-xl bg-white focus:border-green-500 focus:outline-none transition-all text-sm font-urdu text-right"
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">🔍</span>
             </div>
 
             <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {filteredAvailableItems.length > 0 ? (
+              {itemsLoading ? (
+                <div className="text-center py-10">
+                  <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="text-gray-500 mt-2">لوڈ ہو رہا ہے...</p>
+                </div>
+              ) : filteredAvailableItems.length > 0 ? (
                 filteredAvailableItems.map((item) => (
                   <button
-                    key={item.id}
+                    key={item.item_id}
                     onClick={() => handleAddToCart(item)}
                     className="w-full text-right p-4 border rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all flex justify-between items-center group shadow-sm hover:shadow-md"
                   >
                     <div className="text-right">
                       <span className="font-bold text-gray-800 text-lg block">{item.item_name}</span>
-                      <span className="text-gray-500 text-sm">{item.base_unit} | قیمت: Rs. {item.unit_price}</span>
+                      <span className="text-gray-500 text-sm">{item.item_unit} | قیمت: Rs. {item.unit_price}</span>
                     </div>
                     <span className="bg-green-100 text-green-700 px-4 py-2 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-all text-sm font-bold">
                       🛒 کارٹ میں ڈالیں
@@ -672,7 +682,19 @@ function BillItems({ onItemAdded, onClose }) {
               ) : (
                 <div className="text-center py-10 text-gray-400">
                   <span className="text-4xl block mb-2">🔍</span>
-                  <span>کوئی آئٹم نہیں ملا</span>
+                  <span>
+                    {availableItemsSearch
+                      ? `"${availableItemsSearch}" کے نام سے کوئی آئٹم نہیں ملا`
+                      : "کوئی آئٹم موجود نہیں ہے"}
+                  </span>
+                  {!availableItemsSearch && (
+                    <button
+                      onClick={fetchAvailableItems}
+                      className="block mx-auto mt-4 text-green-600 hover:text-green-700 text-sm font-bold"
+                    >
+                      ↻ دوبارہ لوڈ کریں
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -823,6 +845,7 @@ function BillItems({ onItemAdded, onClose }) {
                 handleFormClose(true);
               }}
               showMsg={showMsg}
+              availableItems={availableItems}
             />
           </div>
         </div>
@@ -831,8 +854,8 @@ function BillItems({ onItemAdded, onClose }) {
   );
 }
 
-// ======================== BillItemForm Component ========================
-function BillItemForm({ initialData, onCancel, onSave, showMsg }) {
+// ======================== BillItemForm Component with Validation ========================
+function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }) {
   const [formData, setFormData] = useState({
     item_name: "",
     quantity: "",
@@ -842,6 +865,35 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg }) {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [itemExists, setItemExists] = useState(null);
+  const [matchingItem, setMatchingItem] = useState(null);
+
+  // Check if item exists in database when item_name changes
+  useEffect(() => {
+    if (formData.item_name.trim()) {
+      const foundItem = availableItems.find(
+        item => item.item_name.toLowerCase() === formData.item_name.toLowerCase()
+      );
+      setMatchingItem(foundItem);
+      setItemExists(!!foundItem);
+
+      // Auto-fill the unit if item exists
+      if (foundItem && formData.requested_unit !== foundItem.item_unit) {
+        setFormData(prev => ({
+          ...prev,
+          requested_unit: foundItem.item_unit,
+          custom_unit: ""
+        }));
+        // Clear any previous unit error
+        if (errors.requested_unit) {
+          setErrors(prev => ({ ...prev, requested_unit: "" }));
+        }
+      }
+    } else {
+      setItemExists(null);
+      setMatchingItem(null);
+    }
+  }, [formData.item_name, availableItems]);
 
   useEffect(() => {
     if (initialData) {
@@ -864,21 +916,28 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg }) {
   const validateForm = () => {
     let errs = {};
 
+    // Validate item name
     if (!formData.item_name.trim()) {
       errs.item_name = "آئٹم کا نام درج کرنا ضروری ہے";
     } else if (formData.item_name.length < 2) {
       errs.item_name = "آئٹم کا نام کم از کم 2 حروف کا ہونا چاہیے";
+    } else if (!itemExists) {
+      errs.item_name = `"${formData.item_name}" موجود نہیں ہے - پہلے آئٹمز میں شامل کریں`;
     }
 
+    // Validate quantity
     if (!formData.quantity) {
       errs.quantity = "مقدار درج کرنا ضروری ہے";
     } else if (Number(formData.quantity) <= 0) {
       errs.quantity = "مقدار صفر سے زیادہ ہونی چاہیے";
     }
 
+    // Validate unit
     const finalUnit = formData.requested_unit === "__custom" ? formData.custom_unit : formData.requested_unit;
     if (!finalUnit || !finalUnit.trim()) {
       errs.requested_unit = "اکائی منتخب کریں یا اپنی مرضی کی اکائی درج کریں";
+    } else if (matchingItem && finalUnit !== matchingItem.item_unit) {
+      errs.requested_unit = `"${formData.item_name}" کی صحیح اکائی "${matchingItem.item_unit}" ہے`;
     }
 
     setErrors(errs);
@@ -922,10 +981,22 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg }) {
             type="text"
             value={formData.item_name}
             onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
-            className={`w-full p-3 border-2 rounded-xl outline-none transition-all text-right text-base ${errors.item_name ? "border-red-500 bg-red-50" : "border-gray-200 focus:border-green-500"
+            className={`w-full p-3 border-2 rounded-xl outline-none transition-all text-right text-base ${errors.item_name ? "border-red-500 bg-red-50" :
+                itemExists === true ? "border-green-500 bg-green-50" :
+                  "border-gray-200 focus:border-green-500"
               }`}
             placeholder="مثال: انڈے، دودھ، چاول"
           />
+          {itemExists === true && !errors.item_name && (
+            <p className="text-green-600 text-sm mt-1 text-right">
+              ✓ یہ آئٹم موجود ہے (اکائی: {matchingItem?.item_unit}, قیمت: Rs. {matchingItem?.unit_price})
+            </p>
+          )}
+          {itemExists === false && !errors.item_name && formData.item_name.trim() && (
+            <p className="text-red-600 text-sm mt-1 text-right">
+              ✗ "{formData.item_name}" موجود نہیں ہے - پہلے آئٹمز میں شامل کریں
+            </p>
+          )}
           {errors.item_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_name}</p>}
         </div>
 
@@ -953,14 +1024,26 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg }) {
             <select
               value={formData.requested_unit}
               onChange={(e) => setFormData({ ...formData, requested_unit: e.target.value })}
-              className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.requested_unit ? "border-red-500" : "border-gray-200 focus:border-green-500"
-                }`}
+              disabled={!itemExists}
+              className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.requested_unit ? "border-red-500" :
+                  "border-gray-200 focus:border-green-500"
+                } ${!itemExists ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
             >
               <option value="">منتخب کریں</option>
               {ALLOWED_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
               <option value="__custom">✨ دیگر (اپنی مرضی کی)</option>
             </select>
+            {matchingItem && !errors.requested_unit && formData.requested_unit && formData.requested_unit !== matchingItem.item_unit && formData.requested_unit !== "__custom" && (
+              <p className="text-red-600 text-sm mt-1 text-right">
+                ⚠️ "{formData.item_name}" کی اکائی "{matchingItem.item_unit}" ہے
+              </p>
+            )}
             {errors.requested_unit && <p className="text-red-600 text-sm mt-1 text-right">{errors.requested_unit}</p>}
+            {!itemExists && formData.item_name.trim() && (
+              <p className="text-amber-600 text-sm mt-1 text-right">
+                ⚠️ پہلے درست آئٹم نام درج کریں
+              </p>
+            )}
           </div>
         </div>
 
@@ -976,14 +1059,21 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg }) {
               className="w-full p-3 border-2 border-gray-200 rounded-xl text-right text-base outline-none focus:border-green-500"
               placeholder="مثال: پیالی، تھیلا"
             />
+            {matchingItem && formData.custom_unit && formData.custom_unit !== matchingItem.item_unit && (
+              <p className="text-red-600 text-sm mt-1 text-right">
+                ⚠️ "{formData.item_name}" کی صحیح اکائی "{matchingItem.item_unit}" ہے
+              </p>
+            )}
           </div>
         )}
 
         <div className="flex gap-3 pt-4">
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl font-bold text-base hover:from-green-700 hover:to-green-800 disabled:bg-green-400 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-md"
+            disabled={isSubmitting || !itemExists}
+            className={`flex-1 py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-md ${!itemExists ? "bg-gray-400 cursor-not-allowed" :
+                "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+              }`}
           >
             {isSubmitting ? (
               <>
