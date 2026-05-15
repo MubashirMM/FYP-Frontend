@@ -31,6 +31,52 @@ function Footer({ isAuthenticated }) {
     },
   ];
 
+  // Social media links configuration
+  const socialLinks = [
+    {
+      name: "Facebook",
+      icon: "📘",
+      url: "https://www.facebook.com/360asanshop",
+      hoverColor: "hover:bg-blue-600",
+      bgColor: "bg-blue-600"
+    },
+    {
+      name: "WhatsApp",
+      icon: "💬",
+      url: "https://web.whatsapp.com/",
+      hoverColor: "hover:bg-green-600",
+      bgColor: "bg-green-600"
+    },
+    {
+      name: "YouTube",
+      icon: "📺",
+      url: "https://www.youtube.com/@360asanshop",
+      hoverColor: "hover:bg-red-600",
+      bgColor: "bg-red-600"
+    },
+    {
+      name: "Instagram",
+      icon: "📷",
+      url: "https://www.instagram.com/360asanshop",
+      hoverColor: "hover:bg-pink-600",
+      bgColor: "bg-pink-600"
+    },
+    {
+      name: "TikTok",
+      icon: "🎵",
+      url: "https://www.tiktok.com/@360asanshop",
+      hoverColor: "hover:bg-black",
+      bgColor: "bg-black"
+    },
+    {
+      name: "Twitter/X",
+      icon: "🐦",
+      url: "https://twitter.com/360asanshop",
+      hoverColor: "hover:bg-blue-400",
+      bgColor: "bg-blue-400"
+    }
+  ];
+
   return (
     <footer className="bg-gray-900 text-white border-t border-gray-800" dir="rtl">
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -47,11 +93,27 @@ function Footer({ isAuthenticated }) {
             <p className="text-gray-400 font-urdu leading-relaxed text-sm">
               اردو وائس سپورٹ کے ساتھ جدید اسٹور مینجمنٹ سسٹم۔ اپنے کاروبار کو ڈیجیٹل بنائیں، بل بنائیں اور کھاتہ سنبھالیں - سب کچھ ایک جگہ۔
             </p>
-            <div className="flex gap-4">
-              {['Facebook', 'WhatsApp', 'Support'].map((item, i) => (
-                <div key={i} className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:-translate-y-1 transition-all cursor-pointer border border-gray-700">
-                  <span className="text-xs">🌐</span>
-                </div>
+
+            {/* Social Media Icons with Tooltips */}
+            <div className="flex gap-3 flex-wrap">
+              {socialLinks.map((social, index) => (
+                <a
+                  key={index}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group relative w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center ${social.hoverColor} hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-gray-700`}
+                  aria-label={social.name}
+                >
+                  <span className="text-lg group-hover:scale-110 transition-transform duration-300">
+                    {social.icon}
+                  </span>
+
+                  {/* Tooltip on hover */}
+                  <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap font-urdu">
+                    {social.name}
+                  </span>
+                </a>
               ))}
             </div>
           </div>
@@ -94,7 +156,13 @@ function Footer({ isAuthenticated }) {
             <div className="h-4 w-px bg-gray-800"></div>
             <div className="flex gap-4">
               <Link to="/help" className="text-gray-500 hover:text-white text-xs font-urdu">مدد</Link>
-              <Link to="/privacy" className="text-gray-500 hover:text-white text-xs font-urdu">پرائیویسی</Link>
+              <Link
+                to="/privacy"
+                target="_blank"
+                className="text-gray-500 hover:text-white text-xs font-urdu"
+              >
+                پرائیویسی
+              </Link>
             </div>
           </div>
         </div>

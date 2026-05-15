@@ -7,6 +7,7 @@ import VoiceSamplesForm from "./pages/VoiceSamplesForm";
 import VoiceLogin from "./pages/VoiceLogin";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPasswordConfirm from "./pages/ResetPasswordConfirm";
+import Privacy from "./pages/Privacy";
 
 import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "./pages/MainLayout";
@@ -26,7 +27,7 @@ import ForecastReport from "./pages/ForecasttReport";
 
 function App() {
   return (
-    <Router> 
+    <Router>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
@@ -36,6 +37,8 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
         <Route path="/voice-samples-form" element={<VoiceSamplesForm />} />
+        <Route path="/privacy" element={<Privacy />} />
+
 
         {/* Protected Dashboard Routes with Sidebar & Header */}
         <Route
@@ -48,7 +51,7 @@ function App() {
           {/* <Route path="/main" element={<MainPage />} /> */}
           <Route path="/profile" element={<Profile />} />
           <Route path="/items" element={<Items />} />
-          <Route path="/bills" element={<Bills />} /> 
+          <Route path="/bills" element={<Bills />} />
           <Route path="/udhaar-items" element={<UdhaarItems />} />
           <Route path="/khata" element={<Udhaars />} />
           <Route path="/shop" element={<Shop />} />
@@ -56,7 +59,7 @@ function App() {
           <Route path="/sales" element={<Sales />} />
           <Route path="/bill-item-history" element={<BillItemHistory />} />
           <Route path="/sales-report" element={<SalesReport />} />
-           <Route path="forecast-report" element={<ForecastReport />} />
+          <Route path="forecast-report" element={<ForecastReport />} />
 
         </Route>
 

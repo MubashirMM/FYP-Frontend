@@ -214,7 +214,7 @@ function Home() {
 
               {/* Added more space between and around the titles */}
               <div>
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 font-urdu leading-relaxed mb-8">
+                <h1 dir="rtl" className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 font-urdu leading-relaxed mb-8">
                   360 آسان اسٹور
                 </h1>
                 <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 font-urdu leading-relaxed pt-4 pb-4">
