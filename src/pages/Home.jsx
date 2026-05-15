@@ -40,14 +40,14 @@ function Home() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const response = await fetch(`${API}/docs`, {
         method: 'GET',
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (response.ok || response.status === 200) {
         setIsServerRunning(true);
         setErrorMessage("");
@@ -171,14 +171,14 @@ function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-gray-100">
       <Header isAuthenticated={isAuthenticated} user={user} />
-      
+
       <main className="flex-1">
         {/* ===== HERO SECTION ===== */}
         <section className="relative overflow-hidden">
           {/* Background Decorations */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '1s'}}></div>
+            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '1s' }}></div>
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
           </div>
 
@@ -189,16 +189,16 @@ function Home() {
                 <span className="text-lg">✨</span>
                 <span className="text-sm font-medium text-purple-700 font-urdu">اردو وائس سپورٹ کے ساتھ</span>
               </div>
-              
-             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-8 font-urdu leading-snug">
-  <span className="block mb-2">میرا اسٹور</span>
-  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 py-2">
-    سمارٹ مینجمنٹ سسٹم
-  </span>
-</h1>
-              
+
+              <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-8 font-urdu leading-snug">
+                <span className="block mb-2">360 آسان اسٹور</span>
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 py-2">
+                  سمارٹ مینجمنٹ سسٹم
+                </span>
+              </h1>
+
               <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto font-urdu leading-relaxed">
-                آواز کے ذریعے ادھار، بل، اور آئٹمز مینج کریں۔ 
+                آواز کے ذریعے ادھار، بل، اور آئٹمز مینج کریں۔
                 <span className="text-purple-600 font-semibold">آسان، تیز، اور جدید</span>
               </p>
             </div>
@@ -266,28 +266,27 @@ function Home() {
                   onMouseLeave={() => setActiveFeature(null)}
                 >
                   <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl`}></div>
-                  
+
                   <div className="relative z-10">
                     <div className={`w-14 h-14 bg-gradient-to-br ${card.color} rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
                       {card.icon}
                     </div>
-                    
+
                     <h3 className="text-xl font-bold text-gray-900 mb-2 font-urdu group-hover:text-purple-700 transition-colors">
                       {card.title}
                     </h3>
                     <p className="text-gray-600 mb-4 font-urdu text-sm leading-relaxed">
                       {card.desc}
                     </p>
-                    
+
                     <div className="flex flex-wrap gap-2">
                       {card.features.map((feature, idx) => (
-                        <span 
+                        <span
                           key={idx}
-                          className={`px-3 py-1 text-xs rounded-full font-medium font-urdu transition-colors ${
-                            activeFeature === card.id 
-                              ? 'bg-purple-100 text-purple-700' 
+                          className={`px-3 py-1 text-xs rounded-full font-medium font-urdu transition-colors ${activeFeature === card.id
+                              ? 'bg-purple-100 text-purple-700'
                               : 'bg-gray-100 text-gray-600 group-hover:bg-purple-50 group-hover:text-purple-600'
-                          }`}
+                            }`}
                         >
                           {feature}
                         </span>
@@ -325,7 +324,7 @@ function Home() {
                   اردو وائس ان پٹ
                 </h3>
                 <p className="text-gray-600 text-center font-urdu leading-relaxed">
-                  اردو میں بول کر ادھار، بل، اور آئٹمز شامل کریں۔ 
+                  اردو میں بول کر ادھار، بل، اور آئٹمز شامل کریں۔
                   جدید AI ٹیکنالوجی کے ساتھ درست پہچان۔
                 </p>
               </div>
@@ -338,7 +337,7 @@ function Home() {
                   فوری بل پرنٹ
                 </h3>
                 <p className="text-gray-600 text-center font-urdu leading-relaxed">
-                  ایک کمانڈ سے بل جنریٹ اور پرنٹ کریں۔ 
+                  ایک کمانڈ سے بل جنریٹ اور پرنٹ کریں۔
                   تھرمل پرنٹر سپورٹ کے ساتھ۔
                 </p>
               </div>
@@ -351,7 +350,7 @@ function Home() {
                   اسمارٹ رپورٹس
                 </h3>
                 <p className="text-gray-600 text-center font-urdu leading-relaxed">
-                  فروخت، ادھار، اور پیشن گوئی رپورٹس۔ 
+                  فروخت، ادھار، اور پیشن گوئی رپورٹس۔
                   ڈیٹا پر مبنی فیصلے کریں۔
                 </p>
               </div>

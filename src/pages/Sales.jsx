@@ -9,7 +9,7 @@ function Sales({ onClose }) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
-  const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
+  const [shopInfo, setShopInfo] = useState({ shop_name: "360 آسان اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -48,12 +48,12 @@ function Sales({ onClose }) {
       if (endDate) {
         url += `&end_date=${endDate}`;
       }
-      
+
       const res = await axios.get(url, getAuthHeader());
       const data = res.data || [];
       setSales(data);
       applyFiltersAndSort(data, search, sortBy, sortOrder);
-      
+
       // Fetch summary
       await fetchSummary();
     } catch (err) {
@@ -68,7 +68,7 @@ function Sales({ onClose }) {
       if (startDate) params.append("start_date", startDate);
       if (endDate) params.append("end_date", endDate);
       if (params.toString()) url += `?${params.toString()}`;
-      
+
       const res = await axios.get(url, getAuthHeader());
       setSummary(res.data);
     } catch (err) {
@@ -80,7 +80,7 @@ function Sales({ onClose }) {
     try {
       const res = await axios.get(`${API}/shops/`, getAuthHeader());
       if (res.data?.length > 0) setShopInfo(res.data[0]);
-    } catch {}
+    } catch { }
   };
 
   const showMsg = (text, type) => {
@@ -118,14 +118,14 @@ function Sales({ onClose }) {
 
   const applyFiltersAndSort = (data, searchTerm, sortField, order) => {
     let filtered = [...data];
-    
+
     if (searchTerm) {
-      filtered = filtered.filter(s => 
+      filtered = filtered.filter(s =>
         s.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     filtered.sort((a, b) => {
       let aVal, bVal;
       if (sortField === "customer") {
@@ -144,14 +144,14 @@ function Sales({ onClose }) {
         aVal = a[sortField];
         bVal = b[sortField];
       }
-      
+
       if (order === "asc") {
         return aVal > bVal ? 1 : -1;
       } else {
         return aVal < bVal ? 1 : -1;
       }
     });
-    
+
     setFilteredSales(filtered);
     setCurrentPage(1);
   };
@@ -222,25 +222,25 @@ function Sales({ onClose }) {
             </div>
             <h3 className="text-xl font-bold mb-2">کیا آپ کو یقین ہے؟</h3>
             <p className="text-gray-500 text-sm mb-6">یہ فروخت ہمیشہ کے لیے حذف ہو جائے گی۔</p>
-            
+
             {deleteError && (
               <div className="mb-4 p-3 rounded-xl text-center bg-red-100 text-red-700 border border-red-400 text-sm">
                 ❌ {deleteError}
               </div>
             )}
-            
+
             <div className="flex gap-3">
-              <button 
-                onClick={handleDeleteSale} 
+              <button
+                onClick={handleDeleteSale}
                 className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 text-sm transition-all"
               >
                 ہاں، حذف کریں
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setDeleteId(null);
                   setDeleteError("");
-                }} 
+                }}
                 className="flex-1 bg-gray-100 text-gray-800 py-3 rounded-xl font-bold hover:bg-gray-200 text-sm transition-all"
               >
                 منسوخ
@@ -271,27 +271,27 @@ function Sales({ onClose }) {
             </button>
           </div>
         </div>
-        
+
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <form onSubmit={handleSearch} className="flex-1">
-            <input 
-              type="text" 
-              placeholder="کسٹمر یا آئٹم نام سے تلاش کریں..." 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
+            <input
+              type="text"
+              placeholder="کسٹمر یا آئٹم نام سے تلاش کریں..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               className="w-full p-4 border-2 border-gray-200 rounded-3xl focus:border-emerald-500 outline-none text-right"
             />
           </form>
           <div className="flex gap-2">
-            <button 
-              onClick={() => setShowDateFilter(!showDateFilter)} 
+            <button
+              onClick={() => setShowDateFilter(!showDateFilter)}
               className="px-6 py-3 rounded-3xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
             >
               📅 تاریخ فلٹر
             </button>
             {(search || startDate || endDate) && (
-              <button 
-                onClick={clearFilters} 
+              <button
+                onClick={clearFilters}
                 className="px-6 py-3 rounded-3xl font-bold bg-gray-500 text-white hover:bg-gray-600 transition-all"
               >
                 صاف کریں
@@ -310,25 +310,25 @@ function Sales({ onClose }) {
           <div className="mt-4 p-4 bg-gray-50 rounded-2xl flex gap-4 flex-wrap">
             <div className="flex-1">
               <label className="block text-sm font-bold mb-2 text-right">شروع تاریخ</label>
-              <input 
-                type="date" 
-                value={startDate} 
-                onChange={e => setStartDate(e.target.value)} 
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
                 className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:border-emerald-500 outline-none"
               />
             </div>
             <div className="flex-1">
               <label className="block text-sm font-bold mb-2 text-right">آخری تاریخ</label>
-              <input 
-                type="date" 
-                value={endDate} 
-                onChange={e => setEndDate(e.target.value)} 
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
                 className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:border-emerald-500 outline-none"
               />
             </div>
             <div className="flex items-end">
-              <button 
-                onClick={handleDateFilter} 
+              <button
+                onClick={handleDateFilter}
                 className="px-6 py-3 rounded-2xl font-bold bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 فلٹر لگائیں
@@ -379,8 +379,8 @@ function Sales({ onClose }) {
                   <td className="p-5 border-l text-center">{sale.sale_day} {sale.sale_month} {sale.sale_year}</td>
                   <td className="p-5 border-l text-center text-sm">{sale.sale_time}</td>
                   <td className="p-5 text-center">
-                    <button 
-                      onClick={() => setDeleteId(sale.sale_id)} 
+                    <button
+                      onClick={() => setDeleteId(sale.sale_id)}
                       className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-2xl font-medium text-sm transition-all"
                     >
                       🗑️ حذف کریں
@@ -421,9 +421,8 @@ function Sales({ onClose }) {
             <button
               key={i}
               onClick={() => setCurrentPage(i + 1)}
-              className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${
-                currentPage === i + 1 ? "bg-emerald-600 text-white border-emerald-600" : "bg-white hover:bg-gray-100"
-              }`}
+              className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${currentPage === i + 1 ? "bg-emerald-600 text-white border-emerald-600" : "bg-white hover:bg-gray-100"
+                }`}
             >
               {i + 1}
             </button>

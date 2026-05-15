@@ -35,7 +35,7 @@ function Header({ user, isAuthenticated, onLogout }) {
         }
       }
     };
-    
+
     fetchUser();
   }, [isAuthenticated]);
 
@@ -61,8 +61,8 @@ function Header({ user, isAuthenticated, onLogout }) {
   // Text-based link styling with underline on hover
   const navLinkClass = (path) => `
     px-3 py-2 transition-all duration-300 font-urdu text-base font-semibold
-    ${location.pathname === path 
-      ? 'text-yellow-300 border-b-2 border-yellow-400' 
+    ${location.pathname === path
+      ? 'text-yellow-300 border-b-2 border-yellow-400'
       : 'text-purple-100 hover:text-white hover:underline underline-offset-4'
     }
   `;
@@ -72,17 +72,16 @@ function Header({ user, isAuthenticated, onLogout }) {
 
   return (
     <>
-      <header 
+      <header
         dir="rtl"
-        className={`fixed top-0 w-full z-50 transition-all duration-500 ${
-          scrolled 
-          ? "bg-purple-900/90 backdrop-blur-lg shadow-2xl py-2" 
-          : "bg-gradient-to-r from-purple-900 to-indigo-900 py-4"
-        }`}
+        className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled
+            ? "bg-purple-900/90 backdrop-blur-lg shadow-2xl py-2"
+            : "bg-gradient-to-r from-purple-900 to-indigo-900 py-4"
+          }`}
       >
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-center flex-row">
-            
+
             {/* RIGHT SIDE: Logo Section */}
             <Link to="/" className="flex items-center gap-3 group">
               <div className="w-11 h-11 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-300">
@@ -90,7 +89,7 @@ function Header({ user, isAuthenticated, onLogout }) {
               </div>
               <div className="flex flex-col text-right">
                 <span className="text-2xl font-black tracking-tight text-white font-urdu leading-none">
-                  میرا اسٹور
+                  360 آسان اسٹور
                 </span>
                 <span className="text-[10px] uppercase tracking-[2px] text-purple-300 font-sans">
                   Premium Market
@@ -119,9 +118,9 @@ function Header({ user, isAuthenticated, onLogout }) {
                   <Link to="/voice-samples-form" className={navLinkClass("/voice-samples-form")}>
                     🎙️ وائس رجسٹر
                   </Link>
-                  
+
                   <span className="text-purple-400 text-lg font-light">✦</span>
-                  
+
                   <Link to="/profile" className="flex items-center gap-2 group">
                     <span className="text-purple-200 group-hover:text-white transition-colors font-urdu text-sm">
                       خوش آمدید
@@ -133,8 +132,8 @@ function Header({ user, isAuthenticated, onLogout }) {
 
                   <span className="text-purple-400 text-lg font-light">✦</span>
 
-                  <button 
-                    onClick={handleLogoutClick} 
+                  <button
+                    onClick={handleLogoutClick}
                     className="text-purple-100 hover:text-white hover:underline underline-offset-4 transition-all duration-300 font-urdu text-base font-semibold"
                   >
                     🚪 لاگ آؤٹ
@@ -144,8 +143,8 @@ function Header({ user, isAuthenticated, onLogout }) {
             </nav>
 
             {/* Mobile Menu Button */}
-            <button 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2.5 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors"
             >
               {isMobileMenuOpen ? (
@@ -162,25 +161,25 @@ function Header({ user, isAuthenticated, onLogout }) {
               <div className="flex flex-col gap-2">
                 {!isAuthenticated ? (
                   <>
-                    <Link 
-                      to="/voice-login" 
-                      onClick={() => setIsMobileMenuOpen(false)} 
+                    <Link
+                      to="/voice-login"
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className="p-3 hover:bg-white/10 rounded-xl font-urdu text-white font-semibold transition-colors text-center"
                     >
                       🎤 وائس لاگ ان
                     </Link>
                     <div className="h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent my-1"></div>
-                    <Link 
-                      to="/login" 
-                      onClick={() => setIsMobileMenuOpen(false)} 
+                    <Link
+                      to="/login"
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className="p-3 hover:bg-white/10 rounded-xl font-urdu text-white font-semibold transition-colors text-center"
                     >
                       لاگ ان
                     </Link>
                     <div className="h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent my-1"></div>
-                    <Link 
-                      to="/register" 
-                      onClick={() => setIsMobileMenuOpen(false)} 
+                    <Link
+                      to="/register"
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className="p-3 hover:bg-white/10 rounded-xl font-urdu text-white font-semibold transition-colors text-center"
                     >
                       رجسٹر
@@ -194,24 +193,24 @@ function Header({ user, isAuthenticated, onLogout }) {
                         {displayUsername}
                       </p>
                     </div>
-                    <Link 
-                      to="/profile" 
-                      onClick={() => setIsMobileMenuOpen(false)} 
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className="p-3 hover:bg-white/10 rounded-xl font-urdu text-white font-semibold transition-colors text-center"
                     >
                       👤 پروفائل
                     </Link>
                     <div className="h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent my-1"></div>
-                    <Link 
-                      to="/voice-samples-form" 
-                      onClick={() => setIsMobileMenuOpen(false)} 
+                    <Link
+                      to="/voice-samples-form"
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className="p-3 hover:bg-white/10 rounded-xl font-urdu text-white font-semibold transition-colors text-center"
                     >
                       🎙️ وائس رجسٹر
                     </Link>
                     <div className="h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent my-1"></div>
-                    <button 
-                      onClick={handleLogoutClick} 
+                    <button
+                      onClick={handleLogoutClick}
                       className="p-3 text-red-300 hover:bg-red-500/20 rounded-xl font-urdu font-semibold transition-colors text-center"
                     >
                       🚪 لاگ آؤٹ
@@ -223,7 +222,7 @@ function Header({ user, isAuthenticated, onLogout }) {
           )}
         </div>
       </header>
-      
+
       {/* Logout Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
@@ -270,7 +269,7 @@ function Header({ user, isAuthenticated, onLogout }) {
           </div>
         </div>
       )}
-      
+
       {/* Spacer to prevent content overlap */}
       <div className="h-24"></div>
     </>

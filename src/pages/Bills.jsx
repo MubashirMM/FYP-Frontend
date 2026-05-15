@@ -13,7 +13,7 @@ function Bills({ onItemAdded, onClose }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [selectedBill, setSelectedBill] = useState(null);
-  const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
+  const [shopInfo, setShopInfo] = useState({ shop_name: "360 آسان اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -205,7 +205,7 @@ function Bills({ onItemAdded, onClose }) {
       </head>
       <body>
         <div class="header">
-          <div class="shop-name">${shopInfo.shop_name || "میرا اسٹور"}</div>
+          <div class="shop-name">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
           <div class="shop-address">${shopInfo.address || ""}</div>
           <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
         </div>
@@ -515,7 +515,7 @@ function Bills({ onItemAdded, onClose }) {
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4 overflow-auto">
           <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-auto p-8">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-black text-gray-800">{shopInfo.shop_name || "میرا اسٹور"}</h1>
+              <h1 className="text-3xl font-black text-gray-800">{shopInfo.shop_name || "360 آسان اسٹور"}</h1>
               <p className="text-gray-600">{shopInfo.address}</p>
               <p className="text-sm text-gray-500">مالک: {shopInfo.owner_name || user?.username}</p>
             </div>

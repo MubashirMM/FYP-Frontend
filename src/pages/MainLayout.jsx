@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 const API = import.meta.env.VITE_API_URL;
 
 function MainLayout() {
-  const [isOpen, setIsOpen] = useState(true); 
+  const [isOpen, setIsOpen] = useState(true);
   const [user, setUser] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState("");
@@ -65,14 +65,14 @@ function MainLayout() {
   const menuItems = [
     { to: "/items", icon: "📦", label: "آئٹمز مینجمنٹ" },
     { to: "/udhaar-items", icon: "📋", label: "اُدھار آئٹمز" },
-    { to: "/bill-items", icon: "📝", label:"نقد آئٹمز" },
+    { to: "/bill-items", icon: "📝", label: "نقد آئٹمز" },
     { to: "/khata", icon: "📒", label: "کھاتہ کتاب" },
     { to: "/bills", icon: "📄", label: "بلز مینجمنٹ" },
     { to: "/sales", icon: "💰", label: "فروخت کی ریکارڈ" },
     { to: "/bill-item-history", icon: "📜", label: "بل آئٹم ہسٹری" },
     { to: "/shop", icon: "🛒", label: "اسٹور سیٹنگز" },
     { to: "/sales-report", icon: "📊", label: "فروخت رپورٹ" },
-    { to: "/forecast-report", icon: "🔮", label: "پیشن گوئی رپورٹ" },  
+    { to: "/forecast-report", icon: "🔮", label: "پیشن گوئی رپورٹ" },
   ];
 
   return (
@@ -96,7 +96,7 @@ function MainLayout() {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-black tracking-tight text-white font-urdu leading-none">
-                  میرا اسٹور
+                  360 آسان اسٹور
                 </span>
                 <span className="text-[8px] uppercase tracking-[1px] text-purple-300 font-sans">
                   Premium Market
@@ -104,8 +104,8 @@ function MainLayout() {
               </div>
             </Link>
           )}
-          <button 
-            onClick={() => setIsOpen(!isOpen)} 
+          <button
+            onClick={() => setIsOpen(!isOpen)}
             className={`p-2 hover:bg-gray-700 rounded-xl transition-colors ${!isOpen ? 'mx-auto' : ''}`}
           >
             <span className="text-xl">{isOpen ? "◀" : "☰"}</span>
@@ -115,12 +115,12 @@ function MainLayout() {
         <nav className="flex-1 overflow-y-auto py-4 px-2 custom-scrollbar">
           <div className="flex flex-col gap-1">
             {menuItems.map((item) => (
-              <SidebarItem 
+              <SidebarItem
                 key={item.to}
-                to={item.to} 
-                icon={item.icon} 
-                label={item.label} 
-                isOpen={isOpen} 
+                to={item.to}
+                icon={item.icon}
+                label={item.label}
+                isOpen={isOpen}
                 onClick={closeSidebar}
                 isActive={location.pathname === item.to}
               />
@@ -134,14 +134,14 @@ function MainLayout() {
         {/* Header */}
         <header className="bg-white border-b h-16 flex items-center justify-between px-4 md:px-6 shadow-md shrink-0">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsOpen(true)} 
+            <button
+              onClick={() => setIsOpen(true)}
               className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
             >
               ☰
             </button>
-            <Link 
-              to="/items" 
+            <Link
+              to="/items"
               className="flex items-center gap-3 group hover:opacity-90 transition-all duration-300"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center text-xl shadow-md group-hover:rotate-6 transition-transform duration-300">
@@ -149,7 +149,7 @@ function MainLayout() {
               </div>
               <div className="hidden md:flex flex-col text-right">
                 <h1 className="text-xl font-black tracking-tight text-gray-800 font-urdu leading-none">
-                  میرا اسٹور
+                  360 آسان اسٹور
                 </h1>
                 <span className="text-[8px] uppercase tracking-[1px] text-purple-600 font-sans">
                   Premium Market
@@ -169,10 +169,10 @@ function MainLayout() {
                   <span>🎙️</span>
                   <span className="hidden md:inline">وائس رجسٹر</span>
                 </Link>
-                
+
                 <span className="text-gray-300 hidden md:inline">|</span>
-                
-                <Link 
+
+                <Link
                   to="/profile"
                   onClick={closeSidebar}
                   className="flex items-center gap-3 hover:bg-gray-100 p-2 rounded-2xl transition-colors group"
@@ -185,9 +185,9 @@ function MainLayout() {
                     <p className="text-xs text-gray-500">ID: {user.user_id}</p>
                   </div>
                 </Link>
-                
+
                 <span className="text-gray-300 hidden md:inline">|</span>
-                
+
                 <button
                   onClick={handleLogoutClick}
                   className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
@@ -263,14 +263,14 @@ function MainLayout() {
 
 function SidebarItem({ to, icon, label, isOpen, onClick, isActive }) {
   return (
-    <Link 
-      to={to} 
+    <Link
+      to={to}
       onClick={onClick}
       className={`
         flex items-center px-4 py-3 rounded-xl transition-all duration-200
         ${!isOpen ? 'md:justify-center' : ''}
-        ${isActive 
-          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg' 
+        ${isActive
+          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
           : 'hover:bg-gray-800 text-gray-300 hover:text-white'
         }
       `}

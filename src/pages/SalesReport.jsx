@@ -9,11 +9,11 @@ function SalesReport({ onClose }) {
   const [generating, setGenerating] = useState(false);
   const [printGenerating, setPrintGenerating] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
-  const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
+  const [shopInfo, setShopInfo] = useState({ shop_name: "360 آسان اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -37,7 +37,7 @@ function SalesReport({ onClose }) {
     try {
       const res = await axios.get(`${API}/shops/`, getAuthHeader());
       if (res.data?.length > 0) setShopInfo(res.data[0]);
-    } catch {}
+    } catch { }
   };
 
   const fetchReports = async () => {
@@ -73,7 +73,7 @@ function SalesReport({ onClose }) {
         ...getAuthHeader(),
         responseType: 'blob'
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -82,7 +82,7 @@ function SalesReport({ onClose }) {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       showMsg("📊 ایکسل فائل ڈاؤن لوڈ ہو رہی ہے", "success");
     } catch (err) {
       showMsg("ایکسل ڈاؤن لوڈ نہیں ہو سکی", "error");
@@ -110,44 +110,44 @@ function SalesReport({ onClose }) {
         resolve('');
         return;
       }
-      
+
       const canvas = document.createElement('canvas');
       canvas.width = 600;
       canvas.height = 400;
       const ctx = canvas.getContext('2d');
-      
+
       const items = topItems.slice(0, 5);
       const maxQuantity = Math.max(...items.map(i => i[1]));
-      
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#f9fafb';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       const barWidth = (canvas.width - 100) / items.length - 10;
       const maxBarHeight = canvas.height - 100;
-      
+
       items.forEach((item, index) => {
         const barHeight = (item[1] / maxQuantity) * maxBarHeight;
         const x = 50 + index * (barWidth + 15);
         const y = canvas.height - 60 - barHeight;
-        
+
         ctx.fillStyle = '#2C7DA0';
         ctx.fillRect(x, y, barWidth, barHeight);
         ctx.strokeStyle = '#1a5a7a';
         ctx.strokeRect(x, y, barWidth, barHeight);
-        
+
         ctx.fillStyle = '#333';
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(item[1].toLocaleString(), x + barWidth / 2, y - 5);
-        
+
         let name = item[0];
         if (name.length > 15) name = name.substring(0, 12) + '...';
         ctx.fillStyle = '#666';
         ctx.font = '9px Arial';
         ctx.fillText(name, x + barWidth / 2, canvas.height - 40);
       });
-      
+
       ctx.beginPath();
       ctx.strokeStyle = '#999';
       ctx.lineWidth = 1;
@@ -157,16 +157,16 @@ function SalesReport({ onClose }) {
       ctx.moveTo(40, 20);
       ctx.lineTo(40, canvas.height - 60);
       ctx.stroke();
-      
+
       ctx.fillStyle = '#2C7DA0';
       ctx.font = 'bold 14px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('سب سے زیادہ فروخت ہونے والی اشیاء', canvas.width / 2, 25);
-      
+
       resolve(canvas.toDataURL());
     });
   };
-  
+
   // Generate Pie Chart with Legend
   const generatePieChartImage = (topItems) => {
     return new Promise((resolve) => {
@@ -174,36 +174,36 @@ function SalesReport({ onClose }) {
         resolve('');
         return;
       }
-      
+
       const canvas = document.createElement('canvas');
       canvas.width = 650;
       canvas.height = 450;
       const ctx = canvas.getContext('2d');
-      
+
       const colors = ['#2C7DA0', '#E76F51', '#2A9D8F', '#E9C46A', '#8338EC'];
       const centerX = canvas.width / 2 - 60;
       const centerY = canvas.height / 2;
       const radius = Math.min(canvas.width, canvas.height) / 3;
-      
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       const total = topItems.reduce((sum, item) => sum + item[1], 0);
       let startAngle = -Math.PI / 2;
       const legendItems = [];
-      
+
       topItems.slice(0, 5).forEach((item, index) => {
         const angle = (item[1] / total) * Math.PI * 2;
         const endAngle = startAngle + angle;
         const color = colors[index % colors.length];
-        
+
         ctx.beginPath();
         ctx.fillStyle = color;
         ctx.moveTo(centerX, centerY);
         ctx.arc(centerX, centerY, radius, startAngle, endAngle);
         ctx.fill();
-        
+
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -211,7 +211,7 @@ function SalesReport({ onClose }) {
         ctx.arc(centerX, centerY, radius, startAngle, endAngle);
         ctx.lineTo(centerX, centerY);
         ctx.stroke();
-        
+
         const midAngle = startAngle + angle / 2;
         const labelRadius = radius * 0.65;
         const x = centerX + Math.cos(midAngle) * labelRadius;
@@ -220,59 +220,59 @@ function SalesReport({ onClose }) {
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 12px Arial';
         ctx.fillText(`${percentage}%`, x - 12, y + 4);
-        
+
         legendItems.push({
           name: item[0],
           color: color,
           value: item[1],
           percentage: percentage
         });
-        
+
         startAngle = endAngle;
       });
-      
+
       ctx.beginPath();
       ctx.fillStyle = '#fff';
       ctx.arc(centerX, centerY, radius * 0.45, 0, Math.PI * 2);
       ctx.fill();
-      
+
       ctx.fillStyle = '#2C7DA0';
       ctx.font = 'bold 16px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('مارکیٹ شیئر کی تقسیم', canvas.width / 2, 30);
-      
+
       const legendX = canvas.width - 170;
       let legendY = 80;
-      
+
       ctx.fillStyle = '#333';
       ctx.font = 'bold 13px Arial';
       ctx.textAlign = 'right';
       ctx.fillText('اشیاء کی تفصیل', legendX + 60, legendY - 10);
-      
+
       legendItems.forEach((item, idx) => {
         const yPos = legendY + (idx * 45);
-        
+
         ctx.fillStyle = item.color;
         ctx.fillRect(legendX, yPos, 20, 20);
         ctx.strokeStyle = '#ccc';
         ctx.strokeRect(legendX, yPos, 20, 20);
-        
+
         ctx.fillStyle = '#333';
         ctx.font = '11px Arial';
         ctx.textAlign = 'right';
         let name = item.name;
         if (name.length > 20) name = name.substring(0, 17) + '...';
         ctx.fillText(name, legendX + 115, yPos + 15);
-        
+
         ctx.fillStyle = '#666';
         ctx.font = '10px Arial';
         ctx.fillText(`${item.percentage}% (${item.value.toLocaleString()})`, legendX + 115, yPos + 30);
       });
-      
+
       resolve(canvas.toDataURL());
     });
   };
-  
+
   // Generate Line Chart
   const generateLineChartImage = (sales) => {
     return new Promise((resolve) => {
@@ -285,29 +285,29 @@ function SalesReport({ onClose }) {
         }
         dailySales[date] += amount;
       });
-      
+
       const dates = Object.keys(dailySales).slice(-10);
       const amounts = dates.map(d => dailySales[d]);
-      
+
       if (dates.length === 0) {
         resolve('');
         return;
       }
-      
+
       const canvas = document.createElement('canvas');
       canvas.width = 650;
       canvas.height = 400;
       const ctx = canvas.getContext('2d');
-      
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#f9fafb';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       const padding = 50;
       const graphWidth = canvas.width - 2 * padding;
       const graphHeight = canvas.height - 2 * padding;
       const maxAmount = Math.max(...amounts, 1);
-      
+
       ctx.beginPath();
       ctx.strokeStyle = '#999';
       ctx.lineWidth = 1;
@@ -315,7 +315,7 @@ function SalesReport({ onClose }) {
       ctx.lineTo(padding, canvas.height - padding);
       ctx.lineTo(canvas.width - padding, canvas.height - padding);
       ctx.stroke();
-      
+
       ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 0.5;
       for (let i = 0; i <= 4; i++) {
@@ -325,16 +325,16 @@ function SalesReport({ onClose }) {
         ctx.lineTo(canvas.width - padding, y);
         ctx.stroke();
       }
-      
+
       if (amounts.length > 1) {
         ctx.beginPath();
         ctx.strokeStyle = '#2C7DA0';
         ctx.lineWidth = 3;
-        
+
         amounts.forEach((amount, index) => {
           const x = padding + (graphWidth / (amounts.length - 1)) * index;
           const y = canvas.height - padding - (amount / maxAmount) * graphHeight;
-          
+
           if (index === 0) {
             ctx.moveTo(x, y);
           } else {
@@ -342,11 +342,11 @@ function SalesReport({ onClose }) {
           }
         });
         ctx.stroke();
-        
+
         amounts.forEach((amount, index) => {
           const x = padding + (graphWidth / (amounts.length - 1)) * index;
           const y = canvas.height - padding - (amount / maxAmount) * graphHeight;
-          
+
           ctx.beginPath();
           ctx.fillStyle = '#E76F51';
           ctx.arc(x, y, 5, 0, Math.PI * 2);
@@ -354,14 +354,14 @@ function SalesReport({ onClose }) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
           ctx.stroke();
-          
+
           ctx.fillStyle = '#333';
           ctx.font = 'bold 9px Arial';
           ctx.textAlign = 'center';
           ctx.fillText(`Rs. ${amount.toLocaleString()}`, x, y - 10);
         });
       }
-      
+
       ctx.fillStyle = '#666';
       ctx.font = '8px Arial';
       ctx.textAlign = 'center';
@@ -369,12 +369,12 @@ function SalesReport({ onClose }) {
         const x = padding + (graphWidth / (dates.length - 1)) * index;
         ctx.fillText(date, x, canvas.height - padding + 15);
       });
-      
+
       ctx.fillStyle = '#2C7DA0';
       ctx.font = 'bold 14px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('وقت کے ساتھ فروخت کا رجحان', canvas.width / 2, 25);
-      
+
       resolve(canvas.toDataURL());
     });
   };
@@ -384,30 +384,30 @@ function SalesReport({ onClose }) {
     setPrintGenerating(true);
     try {
       showMsg("📄 رپورٹ تیار ہو رہی ہے... براہ کرم انتظار کریں", "success");
-      
+
       const response = await axios.get(`${API}/reports/${report.report_id}`, getAuthHeader());
       const reportData = response.data;
-      
+
       const salesRes = await axios.get(`${API}/sales/`, getAuthHeader());
       const allSales = salesRes.data || [];
-      
+
       const kpi = reportData.kpi_summary || {};
       const topItems = kpi.top_5_items || [];
-      
+
       const barChartImage = await generateBarChartImage(topItems);
       const pieChartImage = await generatePieChartImage(topItems);
       const lineChartImage = await generateLineChartImage(allSales);
-      
+
       const htmlContent = generatePrintHTML(reportData, kpi, allSales, shopInfo, user, {
         barChart: barChartImage,
         pieChart: pieChartImage,
         lineChart: lineChartImage
       });
-      
+
       const printWindow = window.open('', '_blank');
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      
+
       printWindow.onload = () => {
         setTimeout(() => {
           printWindow.print();
@@ -415,7 +415,7 @@ function SalesReport({ onClose }) {
           setPrintGenerating(false);
         }, 500);
       };
-      
+
     } catch (err) {
       console.error("Print error:", err);
       showMsg("رپورٹ تیار نہیں ہو سکی", "error");
@@ -431,7 +431,7 @@ function SalesReport({ onClose }) {
     const uniqueItems = kpi.unique_items || 0;
     const topItems = kpi.top_5_items || [];
     const avgPerTransaction = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
-    
+
     const itemSummary = {};
     sales.forEach(sale => {
       if (!itemSummary[sale.item_name]) {
@@ -447,13 +447,13 @@ function SalesReport({ onClose }) {
       itemSummary[sale.item_name].revenue += saleTotal;
       itemSummary[sale.item_name].count++;
     });
-    
+
     const totalAllQuantity = Object.values(itemSummary).reduce((sum, item) => sum + item.quantity, 0);
-    
+
     const hasBarChart = charts.barChart && charts.barChart !== '';
     const hasPieChart = charts.pieChart && charts.pieChart !== '';
     const hasLineChart = charts.lineChart && charts.lineChart !== '';
-    
+
     return `<!DOCTYPE html>
     <html dir="rtl">
     <head>
@@ -519,7 +519,7 @@ function SalesReport({ onClose }) {
     <body>
       <div class="container">
         <div class="header">
-          <div class="shop-name">${shop.shop_name || "میرا اسٹور"}</div>
+          <div class="shop-name">${shop.shop_name || "360 آسان اسٹور"}</div>
           <div class="shop-address">${shop.address || ""}</div>
           <div class="shop-address">مالک: ${shop.owner_name || user?.username || ""}</div>
           <div class="report-title">📊 فروخت رپورٹ</div>
@@ -543,15 +543,15 @@ function SalesReport({ onClose }) {
           <thead><tr><th>درجہ</th><th>آئٹم کا نام</th><th>فروخت مقدار</th><th>کل آمدنی</th><th>مارکیٹ شیئر %</th></tr></thead>
           <tbody>
             ${topItems.map((item, idx) => {
-              const marketShare = totalAllQuantity > 0 ? ((item[1] / totalAllQuantity) * 100).toFixed(1) : 0;
-              return `<tr>
+      const marketShare = totalAllQuantity > 0 ? ((item[1] / totalAllQuantity) * 100).toFixed(1) : 0;
+      return `<tr>
                 <td>${idx + 1}</td>
                 <td style="text-align:right">${item[0]}</td>
                 <td>${item[1].toLocaleString()}</td>
                 <td class="amount">Rs. ${item[2].toLocaleString()}</td>
                 <td>${marketShare}%</td>
               </tr>`;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
 
@@ -584,7 +584,7 @@ function SalesReport({ onClose }) {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentReports = reports.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(reports.length / itemsPerPage);
-  
+
   return (
     <div className="relative min-h-screen bg-gray-50 p-3 md:p-6" dir="rtl">
       {/* PDF Generation Loader */}
@@ -729,11 +729,10 @@ function SalesReport({ onClose }) {
               key={i}
               onClick={() => setCurrentPage(i + 1)}
               disabled={printGenerating}
-              className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${
-                currentPage === i + 1
+              className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${currentPage === i + 1
                   ? "bg-amber-600 text-white border-amber-600"
                   : "bg-white hover:bg-gray-100"
-              } disabled:opacity-50`}
+                } disabled:opacity-50`}
             >
               {i + 1}
             </button>

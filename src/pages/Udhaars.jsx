@@ -13,7 +13,7 @@ function Udhaars({ onItemAdded, onClose }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [selectedUdhar, setSelectedUdhar] = useState(null);
-  const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
+  const [shopInfo, setShopInfo] = useState({ shop_name: "360 آسان اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
   const [sortBy, setSortBy] = useState("created_date");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -63,7 +63,7 @@ function Udhaars({ onItemAdded, onClose }) {
       }
       setUdhars([]);
       setFilteredUdhars([]);
-    } finally { 
+    } finally {
       setLoading(false);
     }
   };
@@ -72,7 +72,7 @@ function Udhaars({ onItemAdded, onClose }) {
     try {
       const res = await axios.get(`${API}/shops/`, getAuthHeader());
       if (res.data?.length > 0) setShopInfo(res.data[0]);
-    } catch {}
+    } catch { }
   };
 
   const showMsg = (text, type) => {
@@ -81,15 +81,15 @@ function Udhaars({ onItemAdded, onClose }) {
   };
 
   // ==================== VOICE COMMAND HANDLERS ====================
-  
+
   const handleVoiceCommand = async (commandJson) => {
     console.log("Voice command received on Udhaar page:", commandJson);
-    
+
     const voiceService = new UdhaarVoiceService(showMsg, fetchUdhars);
-    
+
     await voiceService.processCommand(commandJson, {
       onShowUdhaarDetails: async (customerName) => {
-        const foundUdhaar = udhars.find(u => 
+        const foundUdhaar = udhars.find(u =>
           u.customer_name?.toLowerCase() === customerName.toLowerCase()
         );
         if (foundUdhaar) {
@@ -100,7 +100,7 @@ function Udhaars({ onItemAdded, onClose }) {
         }
       },
       onPrintUdhaar: async (customerName) => {
-        const foundUdhaar = udhars.find(u => 
+        const foundUdhaar = udhars.find(u =>
           u.customer_name?.toLowerCase() === customerName.toLowerCase()
         );
         if (foundUdhaar) {
@@ -111,7 +111,7 @@ function Udhaars({ onItemAdded, onClose }) {
         }
       },
       onPayUdhaar: async (customerName) => {
-        const foundUdhaar = udhars.find(u => 
+        const foundUdhaar = udhars.find(u =>
           u.customer_name?.toLowerCase() === customerName.toLowerCase()
         );
         if (foundUdhaar && foundUdhaar.status === "unpaid") {
@@ -135,7 +135,7 @@ function Udhaars({ onItemAdded, onClose }) {
       onSearch: (searchTerm) => {
         setSearch(searchTerm);
         setStatusFilter("all");
-        const filtered = udhars.filter(u => 
+        const filtered = udhars.filter(u =>
           (u.customer_name || "").toLowerCase().includes(searchTerm.toLowerCase())
         );
         setFilteredUdhars(filtered);
@@ -181,11 +181,11 @@ function Udhaars({ onItemAdded, onClose }) {
 
   const payUdhar = async (customerName) => {
     try {
-      const response = await axios.post(`${API}/udhars/pay`, null, { 
-        params: { customer_name: customerName }, 
-        ...getAuthHeader() 
+      const response = await axios.post(`${API}/udhars/pay`, null, {
+        params: { customer_name: customerName },
+        ...getAuthHeader()
       });
-      
+
       showMsg(response.data.message || "اُدھار کامیابی سے ادا کر دیا گیا", "success");
       await fetchUdhars();
       setSelectedUdhar(null);
@@ -198,17 +198,17 @@ function Udhaars({ onItemAdded, onClose }) {
   const handleDirectAddition = async (e) => {
     e.preventDefault();
     setFormMessage({ text: "", type: "" });
-    
+
     if (!selectedCustomer) {
       setFormMessage({ text: "براہ کرم کسٹمر نام منتخب کریں", type: "error" });
       return;
     }
-    
+
     if (!amount || amount <= 0) {
       setFormMessage({ text: "براہ کرم صحیح رقم درج کریں (رقم صفر سے زیادہ ہونی چاہیے)", type: "error" });
       return;
     }
-    
+
     setFormLoading(true);
     try {
       await axios.put(
@@ -216,7 +216,7 @@ function Udhaars({ onItemAdded, onClose }) {
         null,
         { params: { amount: parseFloat(amount) }, ...getAuthHeader() }
       );
-      
+
       setShowAdditionForm(false);
       setSelectedCustomer("");
       setAmount("");
@@ -233,17 +233,17 @@ function Udhaars({ onItemAdded, onClose }) {
   const handleDirectDeduction = async (e) => {
     e.preventDefault();
     setFormMessage({ text: "", type: "" });
-    
+
     if (!selectedCustomer) {
       setFormMessage({ text: "براہ کرم کسٹمر نام منتخب کریں", type: "error" });
       return;
     }
-    
+
     if (!amount || amount <= 0) {
       setFormMessage({ text: "براہ کرم صحیح رقم درج کریں (رقم صفر سے زیادہ ہونی چاہیے)", type: "error" });
       return;
     }
-    
+
     setFormLoading(true);
     try {
       await axios.put(
@@ -251,7 +251,7 @@ function Udhaars({ onItemAdded, onClose }) {
         null,
         { params: { amount: parseFloat(amount) }, ...getAuthHeader() }
       );
-      
+
       setShowDeductionForm(false);
       setSelectedCustomer("");
       setAmount("");
@@ -307,7 +307,7 @@ function Udhaars({ onItemAdded, onClose }) {
     const paidDateParts = udhar.paid_date_urdu ? extractDateParts(udhar.paid_date_urdu) : { day: "", month: "", year: "" };
     const dayName = extractDayName(udhar.created_date_urdu);
     const paidDayName = udhar.paid_date_urdu ? extractDayName(udhar.paid_date_urdu) : "";
-    
+
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html dir="rtl"><head><title>اُدھار بل - ${udhar.customer_name}</title>
@@ -343,7 +343,7 @@ function Udhaars({ onItemAdded, onClose }) {
       </head>
       <body>
         <div class="header">
-          <div class="shop-name">${shopInfo.shop_name || "میرا اسٹور"}</div>
+          <div class="shop-name">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
           <div class="shop-address">${shopInfo.address || ""}</div>
           <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
         </div>
@@ -390,17 +390,17 @@ function Udhaars({ onItemAdded, onClose }) {
 
   const applyFiltersAndSort = () => {
     let filtered = [...udhars];
-    
+
     if (statusFilter !== "all") {
       filtered = filtered.filter(u => u.status === statusFilter);
     }
-    
+
     if (search) {
-      filtered = filtered.filter(u => 
+      filtered = filtered.filter(u =>
         (u.customer_name || "").toLowerCase().includes(search.toLowerCase())
       );
     }
-    
+
     filtered.sort((a, b) => {
       let aVal, bVal;
       if (sortBy === "customer") {
@@ -421,14 +421,14 @@ function Udhaars({ onItemAdded, onClose }) {
         aVal = a[sortBy];
         bVal = b[sortBy];
       }
-      
+
       if (sortOrder === "asc") {
         return aVal > bVal ? 1 : -1;
       } else {
         return aVal < bVal ? 1 : -1;
       }
     });
-    
+
     setFilteredUdhars(filtered);
     setCurrentPage(1);
   };
@@ -532,21 +532,21 @@ function Udhaars({ onItemAdded, onClose }) {
             )}
             <form onSubmit={handleDirectAddition}>
               <div className="mb-4">
-  <label className="block text-sm font-bold mb-2 text-right">کسٹمر کا نام *</label>
-  <input 
-    type="text"
-    list="customer-list"
-    value={selectedCustomer}
-    onChange={(e) => setSelectedCustomer(e.target.value)}
-    placeholder="موجودہ کسٹمر منتخب کریں یا نیا نام لکھیں"
-    className="w-full p-4 border-2 rounded-2xl text-right focus:border-green-500 outline-none"
-    required
-  />
-  <datalist id="customer-list">
-    {udhars.map(u => <option key={u.udhar_id} value={u.customer_name} />)}
-  </datalist>
-  <p className="text-xs text-gray-500 mt-1 text-right">💡 آپ موجودہ کسٹمر منتخب کر سکتے ہیں یا نیا نام لکھ سکتے ہیں</p>
-</div>
+                <label className="block text-sm font-bold mb-2 text-right">کسٹمر کا نام *</label>
+                <input
+                  type="text"
+                  list="customer-list"
+                  value={selectedCustomer}
+                  onChange={(e) => setSelectedCustomer(e.target.value)}
+                  placeholder="موجودہ کسٹمر منتخب کریں یا نیا نام لکھیں"
+                  className="w-full p-4 border-2 rounded-2xl text-right focus:border-green-500 outline-none"
+                  required
+                />
+                <datalist id="customer-list">
+                  {udhars.map(u => <option key={u.udhar_id} value={u.customer_name} />)}
+                </datalist>
+                <p className="text-xs text-gray-500 mt-1 text-right">💡 آپ موجودہ کسٹمر منتخب کر سکتے ہیں یا نیا نام لکھ سکتے ہیں</p>
+              </div>
               <div className="mb-6">
                 <label className="block text-sm font-bold mb-2 text-right">رقم (روپے میں) *</label>
                 <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="مثلاً: 500" className="w-full p-4 border-2 rounded-2xl text-right focus:border-green-500 outline-none" required />
@@ -604,7 +604,7 @@ function Udhaars({ onItemAdded, onClose }) {
               <button onClick={() => handleSort("paid_date")} className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all ${sortBy === "paid_date" ? "bg-amber-600 text-white" : "bg-gray-100 hover:bg-gray-200"}`}>ادائیگی تاریخ {sortBy === "paid_date" && (sortOrder === "asc" ? "↑" : "↓")}</button>
             </div>
           </div>
-          
+
           <div className="flex flex-col md:flex-row justify-between gap-4">
             <form onSubmit={handleSearchSubmit} className="flex-1">
               <input type="text" placeholder="🔍 کسٹمر نام سے تلاش کریں..." value={search} onChange={e => setSearch(e.target.value)} className="w-full p-4 border-2 border-gray-200 rounded-3xl focus:border-amber-500 outline-none text-right" />
@@ -646,7 +646,7 @@ function Udhaars({ onItemAdded, onClose }) {
                 const paidDateParts = u.paid_date_urdu ? extractDateParts(u.paid_date_urdu) : { day: "", month: "", year: "" };
                 const dayName = extractDayName(u.created_date_urdu);
                 const paidDayName = u.paid_date_urdu ? extractDayName(u.paid_date_urdu) : "";
-                
+
                 return (
                   <tr key={u.udhar_id} className="border-b hover:bg-amber-50 transition-colors">
                     <td className="p-5 border-l font-bold whitespace-nowrap">{u.customer_name}</td>
@@ -691,12 +691,12 @@ function Udhaars({ onItemAdded, onClose }) {
                     </div>
                     <p className="text-gray-500 text-lg font-medium">{getEmptyMessage()}</p>
                     {(search || statusFilter !== "all") && (
-                      <button 
-                        onClick={() => { 
-                          setSearch(""); 
-                          setStatusFilter("all"); 
+                      <button
+                        onClick={() => {
+                          setSearch("");
+                          setStatusFilter("all");
                           applyFiltersAndSort();
-                        }} 
+                        }}
                         className="text-amber-600 hover:text-amber-700 font-bold underline"
                       >
                         تمام کسٹمرز دیکھیں
@@ -723,7 +723,7 @@ function Udhaars({ onItemAdded, onClose }) {
       {selectedUdhar && (
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4 overflow-auto">
           <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-auto p-8">
-            <div className="text-center mb-8"><h1 className="text-3xl font-black text-gray-800">{shopInfo.shop_name || "میرا اسٹور"}</h1><p className="text-gray-600">{shopInfo.address}</p><p className="text-sm text-gray-500">مالک: {shopInfo.owner_name || user?.username}</p></div>
+            <div className="text-center mb-8"><h1 className="text-3xl font-black text-gray-800">{shopInfo.shop_name || "360 آسان اسٹور"}</h1><p className="text-gray-600">{shopInfo.address}</p><p className="text-sm text-gray-500">مالک: {shopInfo.owner_name || user?.username}</p></div>
             <div className="flex justify-between items-center mb-6 p-4 bg-gray-50 rounded-2xl flex-wrap gap-3">
               <div><span className="text-gray-600">اُدھار نمبر:</span> <strong>#{selectedUdhar.udhar_id}</strong></div>
               <div><span className="text-gray-600">کسٹمر:</span> <strong>{selectedUdhar.customer_name}</strong></div>

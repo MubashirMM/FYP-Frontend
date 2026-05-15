@@ -31,7 +31,7 @@ function BillItems({ onItemAdded, onClose }) {
   const [showForm, setShowForm] = useState(false);
   const [generatingBill, setGeneratingBill] = useState(false);
   const [showBillPreview, setShowBillPreview] = useState(null);
-  const [shopInfo, setShopInfo] = useState({ shop_name: "میرا اسٹور", owner_name: "", address: "" });
+  const [shopInfo, setShopInfo] = useState({ shop_name: "360 آسان اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
   const [autoFillFormData, setAutoFillFormData] = useState(null);
 
@@ -242,7 +242,7 @@ function BillItems({ onItemAdded, onClose }) {
       </head>
       <body>
         <div class="header">
-          <div class="shop-name">${shopInfo.shop_name || "میرا اسٹور"}</div>
+          <div class="shop-name">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
           <div class="shop-address">${shopInfo.address || ""}</div>
           <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
         </div>
@@ -982,8 +982,8 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
             value={formData.item_name}
             onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
             className={`w-full p-3 border-2 rounded-xl outline-none transition-all text-right text-base ${errors.item_name ? "border-red-500 bg-red-50" :
-                itemExists === true ? "border-green-500 bg-green-50" :
-                  "border-gray-200 focus:border-green-500"
+              itemExists === true ? "border-green-500 bg-green-50" :
+                "border-gray-200 focus:border-green-500"
               }`}
             placeholder="مثال: انڈے، دودھ، چاول"
           />
@@ -1026,7 +1026,7 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
               onChange={(e) => setFormData({ ...formData, requested_unit: e.target.value })}
               disabled={!itemExists}
               className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.requested_unit ? "border-red-500" :
-                  "border-gray-200 focus:border-green-500"
+                "border-gray-200 focus:border-green-500"
                 } ${!itemExists ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
             >
               <option value="">منتخب کریں</option>
@@ -1072,7 +1072,7 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
             type="submit"
             disabled={isSubmitting || !itemExists}
             className={`flex-1 py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-md ${!itemExists ? "bg-gray-400 cursor-not-allowed" :
-                "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+              "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
               }`}
           >
             {isSubmitting ? (
