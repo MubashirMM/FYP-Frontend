@@ -1,5 +1,5 @@
-# Stage 1: Build
-FROM node:20-slim AS build
+# Switch to the official unprivileged (non-root) Nginx image
+FROM nginxinc/nginx-unprivileged:stable-alpine
 WORKDIR /work
 COPY package*.json ./
 RUN npm install
@@ -16,4 +16,7 @@ RUN npm run build
 FROM nginx:stable-alpine
 COPY --from=build /work/dist /usr/share/nginx/html
 EXPOSE 80
+USER 101
+
 CMD ["nginx", "-g", "daemon off;"]
+

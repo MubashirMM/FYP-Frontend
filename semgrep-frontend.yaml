@@ -1,0 +1,221 @@
+# semgrep-frontend.yml
+# OWASP Top 10 (2021) Coverage for React
+# Place this in your React frontend project root
+# commond to run
+#  C:\FYP\Backend\fast-api\.venv\Scripts\semgrep scan --config p/owasp-top-ten --config p/security-audit --config p/react --config p/javascript
+
+rules:
+  # ============================================
+  # A03:2021 - Injection (Cross-site Scripting - XSS)
+  # ============================================
+  
+  # XSS via dangerouslySetInnerHTML
+  - id: react-xss-dangerous-html
+    pattern: |
+      dangerouslySetInnerHTML={{__html: $VAR}}
+    message: |
+      🔴 A03:2021 - Injection (XSS)
+      dangerouslySetInnerHTML with untrusted input allows script injection.
+      ✅ FIX: Sanitize with DOMPurify:
+          import DOMPurify from 'dompurify';
+          dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(userInput)}}
+    languages: [javascript, typescript, jsx, tsx]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  # XSS via innerHTML
+  - id: react-xss-innerhtml
+    pattern: |
+      .innerHTML = $VAR
+    message: |
+      🔴 A03:2021 - Injection (XSS)
+      Direct innerHTML assignment with user input enables XSS.
+      ✅ USE: textContent instead: element.textContent = userInput
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      owasp: "A03:2021 - Injection"
+      cwe: "CWE-79"
+
+  # XSS via eval()
+  - id: react-xss-eval
+    pattern-either:
+      - pattern: eval($VAR)
+      - pattern: new Function($VAR)
+    message: |
+      🔴 A03:2021 - Injection (Code Injection)
+      eval() executes arbitrary code - extremely dangerous with user input.
+      ✅ USE: JSON.parse() for data, or specific functions for logic.
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      owasp: "A03:2021 - Injection"
+      cwe: "CWE-95"
+
+  # XSS via javascript: URLs
+  - id: react-xss-javascript-url
+    pattern: |
+      <a href={`javascript:$CODE`}>
+    message: |
+      🔴 A03:2021 - Injection (XSS)
+      javascript: URLs execute code when clicked.
+      ✅ USE: onClick handlers instead: <button onClick={handleClick}>
+    languages: [jsx, tsx]
+    severity: ERROR
+    metadata:
+      owasp: "A03:2021 - Injection"
+
+  # ============================================
+  # A04:2021 - Insecure Design (Missing Security Headers)
+  # ============================================
+  
+  - id: react-missing-csp
+    pattern-regex: (?s)(?!Content-Security-Policy)
+    message: |
+      ⚠️ A04:2021 - Insecure Design
+      Missing Content-Security-Policy headers increase XSS risk.
+      ✅ ADD in index.html:
+          <meta http-equiv="Content-Security-Policy" 
+                content="default-src 'self'; script-src 'self'">
+    languages: [html]
+    severity: WARNING
+    metadata:
+      owasp: "A04:2021 - Insecure Design"
+
+  # ============================================
+  # A05:2021 - Security Misconfiguration
+  # ============================================
+  
+  # Development tools in production
+  - id: react-dev-tools-production
+    pattern-regex: (ReactDevTools|__REACT_DEVTOOLS_GLOBAL_HOOK__)
+    message: |
+      ⚠️ A05:2021 - Security Misconfiguration
+      React DevTools exposed - use NODE_ENV=production for builds.
+      ✅ FIX: Build with: npm run build (sets NODE_ENV=production)
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      owasp: "A05:2021 - Security Misconfiguration"
+
+  # Console logs exposing sensitive data
+  - id: react-console-sensitive
+    pattern: |
+      console.log($ARG)
+    pattern-regex: (token|password|secret|key|credential|auth)
+    message: |
+      ℹ️ A05:2021 - Security Misconfiguration
+      Sensitive data logged to console - visible in production.
+      ✅ REMOVE console.log before production or use conditional logging.
+    languages: [javascript, typescript, jsx, tsx]
+    severity: INFO
+    metadata:
+      owasp: "A05:2021 - Security Misconfiguration"
+
+  # ============================================
+  # A06:2021 - Vulnerable and Outdated Components
+  # ============================================
+  
+  # (This is handled by npm audit - see commands below)
+  # The rule below flags known vulnerable patterns in React
+  
+  - id: react-old-react-version
+    pattern-regex: react@(16|17)\.
+    message: |
+      ⚠️ A06:2021 - Vulnerable Components
+      React 16.x/17.x may have unpatched vulnerabilities.
+      ✅ UPDATE: npm install react@latest react-dom@latest
+    languages: [json]
+    severity: WARNING
+    metadata:
+      owasp: "A06:2021 - Vulnerable Components"
+
+  # ============================================
+  # A07:2021 - Identification and Authentication Failures
+  # ============================================
+  
+  # localStorage for tokens
+  - id: react-localstorage-token
+    pattern: |
+      localStorage.setItem($KEY, $VALUE)
+    pattern-regex: (token|jwt|access|auth)
+    message: |
+      ⚠️ A07:2021 - Identification and Authentication Failures
+      Token stored in localStorage is accessible to any JS (XSS risk).
+      ✅ BETTER: HTTP-only cookies (not accessible via JavaScript)
+      ✅ If localStorage required: Short expiration + CSP headers
+    languages: [javascript, typescript, jsx, tsx]
+    severity: INFO
+    metadata:
+      owasp: "A07:2021 - Authentication Failures"
+
+  # Hardcoded credentials
+  - id: react-hardcoded-creds
+    pattern-either:
+      - pattern: password: "$STRING"
+      - pattern: apiKey: "$STRING"
+      - pattern: secret: "$STRING"
+    pattern-not-regex: (example|test|demo)
+    message: |
+      🔴 A07:2021 - Authentication Failures
+      Hardcoded credentials found! Frontend code is visible to all users.
+      ✅ USE: Environment variables + backend authentication only.
+    languages: [javascript, typescript, jsx, tsx]
+    severity: ERROR
+    metadata:
+      owasp: "A07:2021 - Authentication Failures"
+
+  # ============================================
+  # A08:2021 - Software and Data Integrity Failures
+  # ============================================
+  
+  # Unsafe deserialization
+  - id: react-unsafe-deserialize
+    pattern-either:
+      - pattern: JSON.parse($INPUT)
+      - pattern: decodeURIComponent($INPUT)
+    pattern-regex: (user|input|query|param)
+    message: |
+      ⚠️ A08:2021 - Data Integrity Failures
+      Deserializing user input without validation.
+      ✅ VALIDATE: Use JSON schema validation before using parsed data.
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      owasp: "A08:2021 - Data Integrity Failures"
+
+  # ============================================
+  # Additional Critical Security Issues
+  # ============================================
+  
+  # Open Redirect
+  - id: react-open-redirect
+    pattern: |
+      window.location.href = $USER_INPUT
+    message: |
+      🔴 Open Redirect vulnerability!
+      ✅ USE: Whitelist validation:
+          const allowed = ['/home', '/profile'];
+          if (allowed.includes(userInput)) {
+              window.location.href = userInput;
+          }
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+
+  # Prototype Pollution
+  - id: react-prototype-pollution
+    pattern-either:
+      - pattern: Object.assign({}, $OBJ, $USER_INPUT)
+      - pattern: {...$OBJ, ...$USER_INPUT}
+    message: |
+      🔴 Prototype Pollution vulnerability!
+      ✅ USE: Deep copy with validation or Object.create(null)
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1321"
