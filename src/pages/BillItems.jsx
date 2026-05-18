@@ -93,6 +93,10 @@ function BillItems({ onItemAdded, onClose }) {
   const [voiceService] = useState(() => new CartItemsVoiceService(showMsg, fetchCartItems));
 
   // Generate bill from cart (local preview only - no backend call)
+  // Add state for print bill data
+  const [printBillData, setPrintBillData] = useState(null);
+
+  // Updated handleGenerateBill function
   const handleGenerateBill = async () => {
     if (cartItems.length === 0) {
       showMsg("❌ کارٹ خالی ہے - پہلے آئٹمز شامل کریں", "error");
@@ -126,153 +130,286 @@ function BillItems({ onItemAdded, onClose }) {
     setGeneratingBill(false);
   };
 
-  // Print bill
-  const printBill = (billData) => {
-    const printWindow = window.open("", "_blank");
+  // New function to print using new window with PrintBill component
+  const handlePrintBill = (billData) => {
+    const printWindow = window.open("", "_blank", "width=800,height=600,toolbar=yes,scrollbars=yes,resizable=yes");
+    if (!printWindow) {
+      showMsg("❌ پاپ اپ بلاکر آن ہے - براہ کرم پاپ اپ کی اجازت دیں", "error");
+      return;
+    }
+
     printWindow.document.write(`
-      <!DOCTYPE html>
-      <html dir="rtl">
-      <head>
-        <title>نقد بل - ${billData.bill_id}</title>
-        <meta charset="UTF-8">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
-            padding: 40px;
-            line-height: 1.6;
-            background: #fff;
-            color: #333;
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 20px;
-          }
-          .shop-name {
-            font-size: 28px;
-            font-weight: bold;
-            color: #10b981;
-            margin-bottom: 10px;
-          }
-          .shop-address {
-            color: #666;
-            font-size: 14px;
-          }
-          .bill-title {
-            text-align: center;
-            margin: 30px 0;
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-          }
-          .bill-info {
-            display: flex;
-            justify-content: space-between;
-            margin: 30px 0;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 12px;
-            flex-wrap: wrap;
-            gap: 15px;
-          }
-          .info-group {
-            text-align: center;
-            flex: 1;
-          }
-          .info-label {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 5px;
-          }
-          .info-value {
-            font-size: 16px;
-            font-weight: bold;
-            color: #333;
-          }
-          .items-table {
-            width: 100%;
-            margin: 30px 0;
-            border-collapse: collapse;
-          }
-          .items-table th,
-          .items-table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-            text-align: center;
-          }
-          .items-table th {
-            background: #f5f5f5;
-            font-weight: bold;
-            border-bottom: 2px solid #ddd;
-          }
-          .items-table td:first-child {
-            text-align: right;
-          }
-          .total-box {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            margin: 30px 0;
-          }
-          .total-label {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 10px;
-          }
-          .total-value {
-            font-size: 48px;
-            font-weight: bold;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #999;
-            font-size: 12px;
-          }
-          @media print {
-            body { padding: 20px; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="shop-name">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
-          <div class="shop-address">${shopInfo.address || ""}</div>
-          <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
-        </div>
-        <div class="bill-title">💰 نقد بل</div>
-        <div class="bill-info">
-          <div class="info-group"><div class="info-label">بل نمبر</div><div class="info-value">#${billData.bill_id}</div></div>
-          <div class="info-group"><div class="info-label">کسٹمر</div><div class="info-value">${billData.customer_name || "نقد"}</div></div>
-          <div class="info-group"><div class="info-label">تاریخ</div><div class="info-value">${billData.bill_day_name}، ${billData.bill_day} ${billData.bill_month} ${billData.bill_year}</div></div>
-          <div class="info-group"><div class="info-label">وقت</div><div class="info-value">${billData.bill_time}</div></div>
-        </div>
-        <table class="items-table">
-          <thead><tr><th>آئٹم</th><th>مقدار</th><th>اکائی</th><th>فی اکائی (Rs.)</th><th>کل (Rs.)</th></tr></thead>
-          <tbody>
-            ${billData.items?.map(item => `
-              <tr><td style="text-align:right">${item.item_name}</td>
-               <td>${item.quantity}</td>
-               <td>${item.requested_unit}</td>
-               <td>${item.unit_price}</td>
-               <td>${item.total_amount}</td>
-             </tr>
-            `).join('') || ' etxek<td colspan="5">کوئی آئٹم نہیں</td></tr>'}
-          </tbody>
-        </table>
-        <div class="total-box"><div class="total-label">کل قابل ادائیگی</div><div class="total-value">${billData.total_amount?.toLocaleString()} روپے</div></div>
-        <div class="footer">شکریہ! دوبارہ تشریف لائیں۔</div>
-      </body>
-      </html>
-    `);
+    <!DOCTYPE html>
+    <html dir="rtl">
+    <head>
+      <title>بل پرنٹ - ${billData.bill_id}</title>
+      <meta charset="UTF-8">
+      <style>
+        @media print {
+          body { margin: 0; padding: 0; }
+          .no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div id="root"></div>
+      <div class="no-print" style="text-align:center; padding:20px; position:fixed; bottom:0; left:0; right:0; background:white; border-top:1px solid #ddd;">
+        <button onclick="window.print()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#10b981; color:white; border:none; border-radius:8px;">🖨️ پرنٹ کریں</button>
+        <button onclick="window.close()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#ef4444; color:white; border:none; border-radius:8px;">✕ بند کریں</button>
+      </div>
+      <script>
+        // Auto print after load
+        setTimeout(() => {
+          window.print();
+        }, 1000);
+      </script>
+    </body>
+    </html>
+  `);
     printWindow.document.close();
-    setTimeout(() => printWindow.print(), 500);
+
+    // Write the bill content after React loads
+    setTimeout(() => {
+      const rootDiv = printWindow.document.getElementById('root');
+      if (rootDiv) {
+        rootDiv.innerHTML = getBillHTML(billData, shopInfo, user);
+      }
+    }, 100);
+  };
+
+  // Helper function to generate bill HTML
+  const getBillHTML = (billData, shopInfo, user) => {
+    return `
+    <div style="padding:20px; font-family:'Noto Nastaliq Urdu','Jameel Noori Nastaleeq',serif" dir="rtl">
+      <div style="text-align:center; margin-bottom:30px; border-bottom:2px solid #ddd; padding-bottom:20px">
+        <div style="font-size:24px; font-weight:bold; color:#10b981">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
+        <div style="color:#666; font-size:12px">${shopInfo.address || ""}</div>
+        <div style="color:#666; font-size:12px">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
+      </div>
+      <div style="text-align:center; margin:20px 0; font-size:20px; font-weight:bold">💰 نقد بل</div>
+      <div style="display:flex; justify-content:space-between; margin:20px 0; padding:15px; background:#f9f9f9; border-radius:8px">
+        <div style="text-align:center"><div style="font-size:11px; color:#666">بل نمبر</div><div style="font-weight:bold">#${billData.bill_id}</div></div>
+        <div style="text-align:center"><div style="font-size:11px; color:#666">کسٹمر</div><div style="font-weight:bold">نقد</div></div>
+        <div style="text-align:center"><div style="font-size:11px; color:#666">تاریخ</div><div style="font-weight:bold">${billData.bill_day_name}، ${billData.bill_day} ${billData.bill_month} ${billData.bill_year}</div></div>
+        <div style="text-align:center"><div style="font-size:11px; color:#666">وقت</div><div style="font-weight:bold">${billData.bill_time}</div></div>
+      </div>
+      <table style="width:100%; border-collapse:collapse">
+        <thead><tr><th style="padding:10px; border-bottom:2px solid #ddd">آئٹم</th><th style="padding:10px; border-bottom:2px solid #ddd">مقدار</th><th style="padding:10px; border-bottom:2px solid #ddd">اکائی</th><th style="padding:10px; border-bottom:2px solid #ddd">فی اکائی</th><th style="padding:10px; border-bottom:2px solid #ddd">کل</th></tr></thead>
+        <tbody>${billData.items?.map(item => `<tr><td style="padding:10px; border-bottom:1px solid #eee; text-align:right">${item.item_name}</td><td style="padding:10px; text-align:center">${item.quantity}</td><td style="padding:10px; text-align:center">${item.requested_unit}</td><td style="padding:10px; text-align:center">${item.unit_price}</td><td style="padding:10px; text-align:center">${item.total_amount}</td></tr>`).join('')}</tbody>
+      </table>
+      <div style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:20px; border-radius:12px; text-align:center; margin:20px 0">
+        <div>کل قابل ادائیگی</div>
+        <div style="font-size:32px; font-weight:bold">${billData.total_amount?.toLocaleString()} روپے</div>
+      </div>
+      <div style="text-align:center; margin-top:40px; padding-top:15px; border-top:1px solid #ddd; color:#999">شکریہ! دوبارہ تشریف لائیں۔</div>
+    </div>
+  `;
+  };
+
+  // Print bill
+  // Print bill - Fixed version without UI freeze
+  const printBill = (billData) => {
+    // Create a hidden iframe instead of window.open
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const iframeWindow = iframe.contentWindow;
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+
+    // Write content to iframe
+    iframeDocument.open();
+    iframeDocument.write(`
+    <!DOCTYPE html>
+    <html dir="rtl">
+    <head>
+      <title>نقد بل - ${billData.bill_id}</title>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          padding: 20px;
+          line-height: 1.6;
+          background: #fff;
+          color: #333;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          border-bottom: 2px solid #ddd;
+          padding-bottom: 20px;
+        }
+        .shop-name {
+          font-size: 24px;
+          font-weight: bold;
+          color: #10b981;
+          margin-bottom: 8px;
+        }
+        .shop-address {
+          color: #666;
+          font-size: 12px;
+        }
+        .bill-title {
+          text-align: center;
+          margin: 20px 0;
+          font-size: 20px;
+          font-weight: bold;
+          color: #333;
+        }
+        .bill-info {
+          display: flex;
+          justify-content: space-between;
+          margin: 20px 0;
+          padding: 15px;
+          background: #f9f9f9;
+          border-radius: 8px;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .info-group {
+          text-align: center;
+          flex: 1;
+        }
+        .info-label {
+          font-size: 11px;
+          color: #666;
+          margin-bottom: 3px;
+        }
+        .info-value {
+          font-size: 14px;
+          font-weight: bold;
+          color: #333;
+        }
+        .items-table {
+          width: 100%;
+          margin: 20px 0;
+          border-collapse: collapse;
+        }
+        .items-table th,
+        .items-table td {
+          padding: 10px;
+          border-bottom: 1px solid #eee;
+          text-align: center;
+        }
+        .items-table th {
+          background: #f5f5f5;
+          font-weight: bold;
+          border-bottom: 2px solid #ddd;
+        }
+        .items-table td:first-child {
+          text-align: right;
+        }
+        .total-box {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          padding: 20px;
+          border-radius: 12px;
+          text-align: center;
+          margin: 20px 0;
+        }
+        .total-label {
+          font-size: 14px;
+          opacity: 0.9;
+          margin-bottom: 8px;
+        }
+        .total-value {
+          font-size: 32px;
+          font-weight: bold;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 40px;
+          padding-top: 15px;
+          border-top: 1px solid #ddd;
+          color: #999;
+          font-size: 11px;
+        }
+        @media print {
+          body { padding: 0; margin: 0; }
+          .no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="shop-name">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
+        <div class="shop-address">${shopInfo.address || ""}</div>
+        <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
+      </div>
+      <div class="bill-title">💰 نقد بل</div>
+      <div class="bill-info">
+        <div class="info-group"><div class="info-label">بل نمبر</div><div class="info-value">#${billData.bill_id}</div></div>
+        <div class="info-group"><div class="info-label">کسٹمر</div><div class="info-value">${billData.customer_name || "نقد"}</div></div>
+        <div class="info-group"><div class="info-label">تاریخ</div><div class="info-value">${billData.bill_day_name}، ${billData.bill_day} ${billData.bill_month} ${billData.bill_year}</div></div>
+        <div class="info-group"><div class="info-label">وقت</div><div class="info-value">${billData.bill_time}</div></div>
+      </div>
+      <table class="items-table">
+        <thead>
+          <tr><th>آئٹم</th><th>مقدار</th><th>اکائی</th><th>فی اکائی (Rs.)</th><th>کل (Rs.)</th></tr>
+        </thead>
+        <tbody>
+          ${billData.items?.map(item => `
+            <tr>
+              <td style="text-align:right">${escapeHtml(item.item_name)}</td>
+              <td>${item.quantity}</td>
+              <td>${escapeHtml(item.requested_unit)}</td>
+              <td>${item.unit_price}</td>
+              <td>${item.total_amount}</td>
+            </tr>
+          `).join('') || '<tr><td colspan="5">کوئی آئٹم نہیں</td></tr>'}
+        </tbody>
+      </table>
+      <div class="total-box">
+        <div class="total-label">کل قابل ادائیگی</div>
+        <div class="total-value">${billData.total_amount?.toLocaleString()} روپے</div>
+      </div>
+      <div class="footer">
+        شکریہ! دوبارہ تشریف لائیں۔
+      </div>
+      <div class="no-print" style="text-align:center; margin-top:20px;">
+        <button onclick="window.print()" style="padding:10px 20px; margin:10px; cursor:pointer;">🖨️ پرنٹ کریں</button>
+        <button onclick="window.close()" style="padding:10px 20px; margin:10px; cursor:pointer;">✕ بند کریں</button>
+      </div>
+      <script>
+        // Auto-trigger print after a short delay
+        setTimeout(() => {
+          window.print();
+        }, 500);
+      </script>
+    </body>
+    </html>
+  `);
+    iframeDocument.close();
+
+    // Focus on iframe and trigger print
+    iframeWindow.focus();
+
+    // Clean up iframe after printing is done or closed
+    const cleanup = () => {
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+    };
+
+    // Handle when print dialog closes
+    iframeWindow.onafterprint = cleanup;
+
+    // Fallback cleanup if onafterprint is not supported
+    setTimeout(cleanup, 30000);
+  };
+
+  // Helper function to escape HTML to prevent XSS
+  const escapeHtml = (text) => {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   };
 
   const handleSearchChange = (e) => {
@@ -574,7 +711,11 @@ function BillItems({ onItemAdded, onClose }) {
               </div>
 
               <div className="flex gap-3">
-                <button onClick={() => printBill(showBillPreview)} className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md">
+
+                <button onClick={() => {
+                  setShowBillPreview(null);
+                  handlePrintBill(showBillPreview);
+                }} className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md">
                   🖨️ پرنٹ بل
                 </button>
               </div>
