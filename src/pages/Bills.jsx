@@ -4,6 +4,13 @@ import VoiceInput from "../components/VoiceInput";
 import { BillsVoiceService } from "../services/BillsVoiceService";
 
 const API = import.meta.env.VITE_API_URL;
+// Helper function to escape HTML to prevent XSS
+const escapeHtml = (text) => {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
 
 function Bills({ onItemAdded, onClose }) {
   const [bills, setBills] = useState([]);
@@ -170,90 +177,235 @@ function Bills({ onItemAdded, onClose }) {
     }
   };
 
+  // Print Bill - Fixed version without UI freeze
   const printBill = (bill) => {
-    const printWindow = window.open("", "_blank");
-    printWindow.document.write(`
-      <html dir="rtl"><head><title>بل - ${bill.customer_name}</title>
+    // Create a hidden iframe instead of window.open
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const iframeWindow = iframe.contentWindow;
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+
+    // Write content to iframe
+    iframeDocument.open();
+    iframeDocument.write(`
+    <!DOCTYPE html>
+    <html dir="rtl">
+    <head>
+      <title>بل - ${escapeHtml(bill.customer_name)}</title>
+      <meta charset="UTF-8">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-          font-family: 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
-          padding: 40px;
+          font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          padding: 20px;
           line-height: 1.6;
           background: #fff;
           color: #333;
         }
-        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #ddd; padding-bottom: 20px; }
-        .shop-name { font-size: 28px; font-weight: bold; color: #2563eb; margin-bottom: 10px; }
-        .shop-address { color: #666; font-size: 14px; }
-        .bill-info { display: flex; justify-content: space-between; margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 12px; flex-wrap: wrap; gap: 15px; }
-        .info-group { text-align: center; flex: 1; }
-        .info-label { font-size: 12px; color: #666; margin-bottom: 5px; }
-        .info-value { font-size: 16px; font-weight: bold; color: #333; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
-        th { background: #f3f4f6; font-weight: bold; }
-        .total-box { background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0; }
-        .total-label { font-size: 14px; opacity: 0.9; }
-        .total-value { font-size: 32px; font-weight: bold; }
-        .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-        .status-paid { background: #d1fae5; color: #065f46; }
-        .status-unpaid { background: #fee2e2; color: #991b1b; }
-        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 12px; }
-        @media print { body { padding: 20px; } }
+        .header { 
+          text-align: center; 
+          margin-bottom: 30px; 
+          border-bottom: 2px solid #ddd; 
+          padding-bottom: 20px;
+        }
+        .shop-name { 
+          font-size: 24px; 
+          font-weight: bold; 
+          color: #2563eb; 
+          margin-bottom: 8px;
+        }
+        .shop-address { 
+          color: #666; 
+          font-size: 12px;
+        }
+        .bill-info { 
+          display: flex; 
+          justify-content: space-between; 
+          margin: 20px 0; 
+          padding: 15px; 
+          background: #f9f9f9; 
+          border-radius: 8px; 
+          flex-wrap: wrap; 
+          gap: 10px;
+        }
+        .info-group { 
+          text-align: center; 
+          flex: 1;
+        }
+        .info-label { 
+          font-size: 11px; 
+          color: #666; 
+          margin-bottom: 3px;
+        }
+        .info-value { 
+          font-size: 14px; 
+          font-weight: bold; 
+          color: #333;
+        }
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin: 20px 0;
+        }
+        th, td { 
+          border: 1px solid #ddd; 
+          padding: 10px; 
+          text-align: right;
+        }
+        th { 
+          background: #f3f4f6; 
+          font-weight: bold;
+        }
+        .total-box { 
+          background: linear-gradient(135deg, #2563eb, #1e40af); 
+          color: white; 
+          padding: 20px; 
+          border-radius: 12px; 
+          text-align: center; 
+          margin: 20px 0;
+        }
+        .total-label { 
+          font-size: 14px; 
+          opacity: 0.9;
+        }
+        .total-value { 
+          font-size: 32px; 
+          font-weight: bold;
+        }
+        .status { 
+          display: inline-block; 
+          padding: 4px 12px; 
+          border-radius: 20px; 
+          font-size: 12px; 
+          font-weight: bold;
+        }
+        .status-paid { 
+          background: #d1fae5; 
+          color: #065f46;
+        }
+        .status-unpaid { 
+          background: #fee2e2; 
+          color: #991b1b;
+        }
+        .details-table { 
+          width: auto; 
+          margin: 20px auto;
+        }
+        .details-table td { 
+          border: none; 
+          padding: 8px;
+        }
+        .footer { 
+          text-align: center; 
+          margin-top: 40px; 
+          padding-top: 15px; 
+          border-top: 1px solid #ddd; 
+          color: #999; 
+          font-size: 11px;
+        }
+        @media print {
+          body { padding: 0; margin: 0; }
+          .no-print { display: none; }
+        }
       </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="shop-name">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
-          <div class="shop-address">${shopInfo.address || ""}</div>
-          <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
-        </div>
+    </head>
+    <body>
+      <div class="header">
+        <div class="shop-name">${escapeHtml(shopInfo.shop_name) || "360 آسان اسٹور"}</div>
+        <div class="shop-address">${escapeHtml(shopInfo.address) || ""}</div>
+        <div class="shop-address">مالک: ${escapeHtml(shopInfo.owner_name) || escapeHtml(user?.username) || ""}</div>
+      </div>
 
-        <div class="bill-info">
-          <div class="info-group"><div class="info-label">بل نمبر</div><div class="info-value">#${bill.bill_id}</div></div>
-          <div class="info-group"><div class="info-label">کسٹمر</div><div class="info-value">${bill.customer_name}</div></div>
-          <div class="info-group"><div class="info-label">تاریخ</div><div class="info-value">${bill.bill_day_name}، ${bill.bill_day} ${bill.bill_month} ${bill.bill_year}</div></div>
-          <div class="info-group"><div class="info-label">وقت</div><div class="info-value">${bill.bill_time}</div></div>
-        </div>
+      <div class="bill-info">
+        <div class="info-group"><div class="info-label">بل نمبر</div><div class="info-value">#${bill.bill_id}</div></div>
+        <div class="info-group"><div class="info-label">کسٹمر</div><div class="info-value">${escapeHtml(bill.customer_name)}</div></div>
+        <div class="info-group"><div class="info-label">تاریخ</div><div class="info-value">${escapeHtml(bill.bill_day_name)}، ${bill.bill_day} ${escapeHtml(bill.bill_month)} ${bill.bill_year}</div></div>
+        <div class="info-group"><div class="info-label">وقت</div><div class="info-value">${bill.bill_time}</div></div>
+      </div>
 
-        ${bill.status === "paid" ? `
-        <div class="bill-info" style="background: #d1fae5;">
-          <div class="info-group"><div class="info-label">ادا شدہ تاریخ</div><div class="info-value">${bill.bill_day_name}، ${bill.bill_day} ${bill.bill_month} ${bill.bill_year}</div></div>
-        </div>
-        ` : ''}
+      ${bill.status === "paid" ? `
+      <div class="bill-info" style="background: #d1fae5;">
+        <div class="info-group"><div class="info-label">ادا شدہ تاریخ</div><div class="info-value">${escapeHtml(bill.bill_day_name)}، ${bill.bill_day} ${escapeHtml(bill.bill_month)} ${bill.bill_year}</div></div>
+      </div>
+      ` : ''}
 
-        <table>
-          <thead>
-            <tr><th>آئٹم</th><th>مقدار</th><th>فی اکائی (روپے)</th><th>کل (روپے)</th></tr>
-          </thead>
-          <tbody>
-            ${bill.items?.map(item => `
-              <tr><td>${item.item_name}</td><td>${item.quantity} ${item.requested_unit || ''}</td><td>${item.unit_price}</td><td>${item.total_amount}</td>
-            `).join('') || '<table><td colspan="4" style="text-align:center">کوئی آئٹم نہیں</td></tr>'}
-          </tbody>
-        </table>
+      <table>
+        <thead>
+          <tr><th>آئٹم</th><th>مقدار</th><th>فی اکائی (روپے)</th><th>کل (روپے)</th></tr>
+        </thead>
+        <tbody>
+          ${bill.items?.map(item => `
+            <tr>
+              <td style="text-align:right">${escapeHtml(item.item_name)}</td>
+              <td style="text-align:center">${item.quantity} ${escapeHtml(item.requested_unit) || ''}</td>
+              <td style="text-align:center">${item.unit_price}</td>
+              <td style="text-align:center">${item.total_amount}</td>
+            </tr>
+          `).join('') || '<tr><td colspan="4" style="text-align:center">کوئی آئٹم نہیں</td></tr>'}
+        </tbody>
+      </table>
 
-        <div class="total-box">
-          <div class="total-label">کل رقم</div>
-          <div class="total-value">${bill.effective_total} روپے</div>
-        </div>
+      <div class="total-box">
+        <div class="total-label">کل رقم</div>
+        <div class="total-value">${bill.effective_total} روپے</div>
+      </div>
 
-        <table style="width: auto; margin: 0 auto;">
-          <tr><td style="border: none;">سب ٹوٹل:</td><td style="border: none;">${bill.udhar_items_total} روپے</td></tr>
-          <tr><td style="border: none;">براہ راست جمع:</td><td style="border: none; color: #10b981;">+ ${bill.direct_addition} روپے</td></tr>
-          <tr><td style="border: none;">براہ راست کٹوتی:</td><td style="border: none; color: #ef4444;">- ${bill.direct_deduction} روپے</td></tr>
-          <tr><td style="border: none;">اسٹیٹس:</td><td style="border: none;"><span class="status ${bill.status === 'paid' ? 'status-paid' : 'status-unpaid'}">${bill.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}</span></td></tr>
-        </table>
+      <table class="details-table">
+        <tr><td style="text-align:right">سب ٹوٹل:</td><td style="text-align:left">${bill.udhar_items_total} روپے</td></tr>
+        <tr><td style="text-align:right">براہ راست جمع:</td><td style="text-align:left; color: #10b981;">+ ${bill.direct_addition} روپے</td></tr>
+        <tr><td style="text-align:right">براہ راست کٹوتی:</td><td style="text-align:left; color: #ef4444;">- ${bill.direct_deduction} روپے</td></tr>
+        <tr><td style="text-align:right">اسٹیٹس:</td><td style="text-align:left"><span class="status ${bill.status === 'paid' ? 'status-paid' : 'status-unpaid'}">${bill.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}</span></td></tr>
+      </table>
 
-        <div class="footer">شکریہ! دوبارہ تشریف لائیں۔</div>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-    setTimeout(() => printWindow.print(), 500);
+      <div class="footer">
+        شکریہ! دوبارہ تشریف لائیں۔
+      </div>
+      <div class="no-print" style="text-align:center; margin-top:20px;">
+        <button onclick="window.print()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#2563eb; color:white; border:none; border-radius:8px;">🖨️ پرنٹ کریں</button>
+        <button onclick="window.close()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#ef4444; color:white; border:none; border-radius:8px;">✕ بند کریں</button>
+      </div>
+      <script>
+        // Auto-trigger print after a short delay
+        setTimeout(() => {
+          window.print();
+        }, 500);
+      </script>
+    </body>
+    </html>
+  `);
+    iframeDocument.close();
+
+    // Focus on iframe and trigger print
+    iframeWindow.focus();
+
+    // Clean up iframe after printing is done or closed
+    const cleanup = () => {
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+    };
+
+    // Handle when print dialog closes
+    iframeWindow.onafterprint = cleanup;
+
+    // Fallback cleanup if onafterprint is not supported
+    setTimeout(cleanup, 30000);
   };
 
+  // Helper function to escape HTML to prevent XSS
+  const escapeHtml = (text) => {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
   useEffect(() => {
     fetchBills();
     fetchShopInfo();
