@@ -32,50 +32,50 @@ function Footer({ isAuthenticated }) {
   ];
 
   // Social media links configuration
-  const socialLinks = [
-    {
-      name: "Facebook",
-      icon: "📘",
-      url: "https://www.facebook.com/360asanshop",
-      hoverColor: "hover:bg-blue-600",
-      bgColor: "bg-blue-600"
-    },
-    {
-      name: "WhatsApp",
-      icon: "💬",
-      url: "https://web.whatsapp.com/",
-      hoverColor: "hover:bg-green-600",
-      bgColor: "bg-green-600"
-    },
-    {
-      name: "YouTube",
-      icon: "📺",
-      url: "https://www.youtube.com/@360asanshop",
-      hoverColor: "hover:bg-red-600",
-      bgColor: "bg-red-600"
-    },
-    {
-      name: "Instagram",
-      icon: "📷",
-      url: "https://www.instagram.com/360asanshop",
-      hoverColor: "hover:bg-pink-600",
-      bgColor: "bg-pink-600"
-    },
-    {
-      name: "TikTok",
-      icon: "🎵",
-      url: "https://www.tiktok.com/@360asanshop",
-      hoverColor: "hover:bg-black",
-      bgColor: "bg-black"
-    },
-    {
-      name: "Twitter/X",
-      icon: "🐦",
-      url: "https://twitter.com/360asanshop",
-      hoverColor: "hover:bg-blue-400",
-      bgColor: "bg-blue-400"
-    }
-  ];
+  // const socialLinks = [
+  //   {
+  //     name: "Facebook",
+  //     icon: "📘",
+  //     url: "https://www.facebook.com/360asanshop",
+  //     hoverColor: "hover:bg-blue-600",
+  //     bgColor: "bg-blue-600"
+  //   },
+  //   {
+  //     name: "WhatsApp",
+  //     icon: "💬",
+  //     url: "https://web.whatsapp.com/",
+  //     hoverColor: "hover:bg-green-600",
+  //     bgColor: "bg-green-600"
+  //   },
+  //   {
+  //     name: "YouTube",
+  //     icon: "📺",
+  //     url: "https://www.youtube.com/@360asanshop",
+  //     hoverColor: "hover:bg-red-600",
+  //     bgColor: "bg-red-600"
+  //   },
+  //   {
+  //     name: "Instagram",
+  //     icon: "📷",
+  //     url: "https://www.instagram.com/360asanshop",
+  //     hoverColor: "hover:bg-pink-600",
+  //     bgColor: "bg-pink-600"
+  //   },
+  //   {
+  //     name: "TikTok",
+  //     icon: "🎵",
+  //     url: "https://www.tiktok.com/@360asanshop",
+  //     hoverColor: "hover:bg-black",
+  //     bgColor: "bg-black"
+  //   },
+  //   {
+  //     name: "Twitter/X",
+  //     icon: "🐦",
+  //     url: "https://twitter.com/360asanshop",
+  //     hoverColor: "hover:bg-blue-400",
+  //     bgColor: "bg-blue-400"
+  //   }
+  // ];
 
   return (
     <footer className="bg-gray-900 text-white border-t border-gray-800" dir="rtl">
@@ -95,7 +95,7 @@ function Footer({ isAuthenticated }) {
             </p>
 
             {/* Social Media Icons with Tooltips */}
-            <div className="flex gap-3 flex-wrap">
+            {/* <div className="flex gap-3 flex-wrap">
               {socialLinks.map((social, index) => (
                 <a
                   key={index}
@@ -110,12 +110,12 @@ function Footer({ isAuthenticated }) {
                   </span>
 
                   {/* Tooltip on hover */}
-                  <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap font-urdu">
-                    {social.name}
-                  </span>
-                </a>
+            {/* <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap font-urdu">
+              {social.name}
+            </span>
+          </a>
               ))}
-            </div>
+        </div> */}
           </div>
 
           {/* Dynamic Sections */}
@@ -166,8 +166,8 @@ function Footer({ isAuthenticated }) {
             </div>
           </div>
         </div>
-      </div>
-    </footer>
+      </div >
+    </footer >
   );
 }
 

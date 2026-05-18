@@ -401,12 +401,12 @@ function Home() {
               >
                 🆓 مفت شروع کریں
               </Link>
-              <a
+              {/* <a
                 href="#demo"
                 className="px-8 py-4 border-2 border-white text-white rounded-2xl font-bold text-lg font-urdu hover:bg-white/10 transition-all"
               >
                 🎬 ڈیمو دیکھیں
-              </a>
+              </a> */}
             </div>
           </div>
         </section>

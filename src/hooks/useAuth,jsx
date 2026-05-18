@@ -1,0 +1,37 @@
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+
+export function useAuth() {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                setIsAuthenticated(false);
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const API = import.meta.env.VITE_API_URL;
+                const response = await axios.get(`${API}/auth/me`);
+                setUser(response.data);
+                setIsAuthenticated(true);
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                localStorage.removeItem('token');
+                setIsAuthenticated(false);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkAuth();
+    }, []);
+
+    return { user, loading, isAuthenticated };
+}

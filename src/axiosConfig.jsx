@@ -20,7 +20,7 @@ axios.interceptors.request.use(
   }
 );
 
-// Optional: Handle 401 responses globally
+// Handle 401 responses globally
 axios.interceptors.response.use(
   (response) => {
     return response;
@@ -34,6 +34,8 @@ axios.interceptors.response.use(
       "/auth/forgot-password",
       "/auth/reset-password",
       "/auth/reset-password-confirm",
+      "/auth/voice-login",
+      "/auth/save-voice-samples",
     ].some((path) => requestUrl.includes(path));
 
     if (error.response?.status === 401) {
