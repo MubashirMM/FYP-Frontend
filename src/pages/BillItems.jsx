@@ -1,7 +1,5 @@
 import axios from "axios";
 import { useState, useEffect } from "react";
-import VoiceInput from "../components/VoiceInput";
-import { CartItemsVoiceService } from "../services/CartItemsVoiceService";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -11,23 +9,12 @@ const ALLOWED_UNITS = [
   "پیکٹ", "ڈبہ", "بوتل"
 ];
 
-// Local cart item structure
-const createLocalCartItem = (item) => ({
-  id: Date.now() + Math.random(),
-  item_name: item.item_name,
-  quantity: item.quantity || 1,
-  requested_unit: item.requested_unit,
-  unit_price: item.unit_price || 0,
-  total_amount: (item.quantity || 1) * (item.unit_price || 0),
-});
-
 function BillItems({ onItemAdded, onClose }) {
   const [cartItems, setCartItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
-  const [deleteId, setDeleteId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [generatingBill, setGeneratingBill] = useState(false);
   const [showBillPreview, setShowBillPreview] = useState(null);
@@ -35,12 +22,6 @@ function BillItems({ onItemAdded, onClose }) {
   const [user, setUser] = useState(null);
   const [autoFillFormData, setAutoFillFormData] = useState(null);
 
-  // Voice related states
-  const [showVoiceAddForm, setShowVoiceAddForm] = useState(false);
-  const [voiceFormData, setVoiceFormData] = useState(null);
-  const [voiceDeleteData, setVoiceDeleteData] = useState(null);
-
-  // For "add items" section - REAL items from API
   const [availableItems, setAvailableItems] = useState([]);
   const [filteredAvailableItems, setFilteredAvailableItems] = useState([]);
   const [availableItemsSearch, setAvailableItemsSearch] = useState("");
@@ -66,7 +47,6 @@ function BillItems({ onItemAdded, onClose }) {
     } catch { }
   };
 
-  // Fetch available items from API
   const fetchAvailableItems = async () => {
     setItemsLoading(true);
     try {
@@ -82,21 +62,230 @@ function BillItems({ onItemAdded, onClose }) {
     }
   };
 
+  // Fetch cart items - Fix for undefined cart_item_id
+  const fetchCartFromBackend = async () => {
+    try {
+      const response = await axios.get(`${API}/cart/items`, getAuthHeader());
+      console.log("Cart response:", response.data);
+
+      let itemsArray = [];
+      if (response.data && Array.isArray(response.data)) {
+        itemsArray = response.data;
+      } else if (response.data && response.data.items && Array.isArray(response.data.items)) {
+        itemsArray = response.data.items;
+      }
+
+      const loadedItems = itemsArray.map(item => ({
+        // TRY DIFFERENT POSSIBLE FIELD NAMES
+        cart_item_id: item.cart_item_id || item.id || item.bill_item_id,
+        item_name: item.item_name,
+        quantity: item.quantity,
+        requested_unit: item.requested_unit,
+        unit_price: item.unit_price || 0,
+        total_amount: (item.quantity || 0) * (item.unit_price || 0)
+      }));
+
+      console.log("Loaded items with IDs:", loadedItems); // Debug log
+
+      setCartItems(loadedItems);
+      setFilteredItems(loadedItems);
+    } catch (err) {
+      console.error("Failed to fetch cart:", err);
+      setCartItems([]);
+      setFilteredItems([]);
+    }
+  };
+
   const showMsg = (text, type) => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: "", type: "" }), 3000);
   };
 
-  const fetchCartItems = () => { return cartItems; };
+  // ============ CART OPERATIONS ============
 
-  // Initialize voice service
-  const [voiceService] = useState(() => new CartItemsVoiceService(showMsg, fetchCartItems));
+  // Replace the handleIncrement function with this:
+  const handleIncrement = async (item) => {
+    setLoading(true);
+    try {
+      const newQuantity = item.quantity + 1;
 
-  // Generate bill from cart (local preview only - no backend call)
-  // Add state for print bill data
-  const [printBillData, setPrintBillData] = useState(null);
+      // First, get the item details from availableItems to get correct unit_price
+      const itemDetails = availableItems.find(
+        i => i.item_name.toLowerCase() === item.item_name.toLowerCase()
+      );
 
-  // Updated handleGenerateBill function
+      if (!itemDetails) {
+        showMsg(`❌ ${item.item_name} کی معلومات نہیں مل سکی`, "error");
+        return;
+      }
+
+      // Update the cart item with new quantity
+      await axios.put(`${API}/cart/item/${item.cart_item_id}`, {
+        quantity: newQuantity,
+        requested_unit: item.requested_unit
+      }, getAuthHeader());
+
+      await fetchCartFromBackend();
+      showMsg(`✅ ${item.item_name} کی تعداد ${newQuantity} کر دی گئی`, "success");
+    } catch (err) {
+      console.error("Increment error:", err);
+      showMsg(err.response?.data?.detail || "اپڈیٹ کرنے میں خرابی", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Replace the handleDecrement function with this:
+  const handleDecrement = async (item) => {
+    setLoading(true);
+    try {
+      if (item.quantity <= 1) {
+        // Delete the item
+        await axios.delete(`${API}/cart/item/${item.cart_item_id}`, getAuthHeader());
+        showMsg(`✅ ${item.item_name} کارٹ سے حذف کر دیا گیا`, "success");
+      } else {
+        const newQuantity = item.quantity - 1;
+
+        // Update the cart item with new quantity
+        await axios.put(`${API}/cart/item/${item.cart_item_id}`, {
+          quantity: newQuantity,
+          requested_unit: item.requested_unit
+        }, getAuthHeader());
+
+        showMsg(`✅ ${item.item_name} کی تعداد ${newQuantity} کر دی گئی`, "success");
+      }
+
+      await fetchCartFromBackend();
+    } catch (err) {
+      console.error("Decrement error:", err);
+      showMsg(err.response?.data?.detail || "اپڈیٹ کرنے میں خرابی", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Replace the handleRemoveFromCart function with this:
+  const handleRemoveFromCart = async (item) => {
+    setLoading(true);
+    try {
+      await axios.delete(`${API}/cart/item/${item.cart_item_id}`, getAuthHeader());
+      await fetchCartFromBackend();
+      showMsg(`✅ ${item.item_name} کارٹ سے حذف کر دیا گیا`, "success");
+    } catch (err) {
+      console.error("Remove error:", err);
+      showMsg(err.response?.data?.detail || "حذف کرنے میں خرابی", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Replace the handleAddToCart function to check if item already exists:
+  const handleAddToCart = async (item) => {
+    setLoading(true);
+    try {
+      // Check if item already exists in cart
+      const existingItem = cartItems.find(
+        cartItem => cartItem.item_name.toLowerCase() === item.item_name.toLowerCase()
+      );
+
+      if (existingItem) {
+        showMsg(`⚠️ ${item.item_name} پہلے سے کارٹ میں موجود ہے (موجودہ مقدار: ${existingItem.quantity})`, "error");
+        return;
+      }
+
+      // New item - add directly
+      await axios.post(`${API}/cart/add`, null, {
+        params: {
+          item_name: item.item_name,
+          quantity: 1,
+          requested_unit: item.item_unit || "عدد"
+        },
+        ...getAuthHeader()
+      });
+      showMsg(`✅ ${item.item_name} کارٹ میں شامل کر دیا گیا`, "success");
+
+      await fetchCartFromBackend();
+      if (onItemAdded) onItemAdded();
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+      showMsg(err.response?.data?.detail || "کارٹ میں شامل کرنے میں خرابی", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Replace the addCustomItemToCart function:
+  const addCustomItemToCart = async (formData) => {
+    const finalUnit = formData.requested_unit;
+
+    const existingItemInDB = availableItems.find(
+      item => item.item_name.toLowerCase() === formData.item_name.toLowerCase()
+    );
+
+    if (!existingItemInDB) {
+      showMsg(`❌ "${formData.item_name}" موجود نہیں ہے`, "error");
+      return;
+    }
+
+    if (existingItemInDB.item_unit !== finalUnit) {
+      showMsg(`❌ "${formData.item_name}" کی اکائی "${existingItemInDB.item_unit}" ہے`, "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Check if item already exists in cart
+      const existingItem = cartItems.find(
+        cartItem => cartItem.item_name.toLowerCase() === formData.item_name.toLowerCase()
+      );
+
+      if (existingItem) {
+        showMsg(`⚠️ ${formData.item_name} پہلے سے کارٹ میں موجود ہے (موجودہ مقدار: ${existingItem.quantity})`, "error");
+        return;
+      }
+
+      // New item - add directly
+      await axios.post(`${API}/cart/add`, null, {
+        params: {
+          item_name: formData.item_name,
+          quantity: Number(formData.quantity),
+          requested_unit: finalUnit
+        },
+        ...getAuthHeader()
+      });
+      showMsg(`✅ ${formData.item_name} کارٹ میں شامل کر دیا گیا`, "success");
+
+      await fetchCartFromBackend();
+      if (onItemAdded) onItemAdded();
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+      showMsg(err.response?.data?.detail || "کارٹ میں شامل کرنے میں خرابی", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+  // Clear entire cart
+  const handleClearCart = async () => {
+    if (cartItems.length === 0) {
+      showMsg("کارٹ پہلے سے خالی ہے", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await axios.delete(`${API}/cart/clear`, getAuthHeader());
+      await fetchCartFromBackend();
+      showMsg("✅ کارٹ خالی کر دیا گیا", "success");
+      if (onItemAdded) onItemAdded();
+    } catch (err) {
+      console.error("Clear cart error:", err);
+      showMsg("کارٹ خالی کرنے میں خرابی", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate bill
   const handleGenerateBill = async () => {
     if (cartItems.length === 0) {
       showMsg("❌ کارٹ خالی ہے - پہلے آئٹمز شامل کریں", "error");
@@ -105,111 +294,53 @@ function BillItems({ onItemAdded, onClose }) {
 
     setGeneratingBill(true);
 
-    // Create bill preview locally
-    const now = new Date();
-    const billData = {
-      bill_id: Math.floor(Math.random() * 1000000),
-      customer_name: "نقد",
-      bill_day: now.getDate(),
-      bill_month: now.toLocaleString('ur', { month: 'long' }),
-      bill_year: now.getFullYear(),
-      bill_time: now.toLocaleTimeString('ur-PK'),
-      bill_day_name: now.toLocaleDateString('ur-PK', { weekday: 'long' }),
-      items: cartItems.map(item => ({
-        item_name: item.item_name,
-        quantity: item.quantity,
-        requested_unit: item.requested_unit,
-        unit_price: item.unit_price,
-        total_amount: item.total_amount
-      })),
-      total_amount: totalCartAmount
-    };
+    try {
+      const response = await axios.post(`${API}/cart/generate-bill`, {}, getAuthHeader());
 
-    setShowBillPreview(billData);
-    showMsg("✅ بل کامیابی سے جنریٹ ہو گیا", "success");
-    setGeneratingBill(false);
-  };
+      if (response.data) {
+        const savedBill = response.data.bill || response.data;
+        const totalCartAmount = cartItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
 
-  // New function to print using new window with PrintBill component
-  const handlePrintBill = (billData) => {
-    const printWindow = window.open("", "_blank", "width=800,height=600,toolbar=yes,scrollbars=yes,resizable=yes");
-    if (!printWindow) {
-      showMsg("❌ پاپ اپ بلاکر آن ہے - براہ کرم پاپ اپ کی اجازت دیں", "error");
-      return;
-    }
+        const now = new Date();
+        const billData = {
+          bill_id: savedBill.bill_id || Math.floor(Math.random() * 1000000),
+          customer_name: savedBill.customer_name || "نقد",
+          bill_day: savedBill.bill_day || now.getDate(),
+          bill_month: savedBill.bill_month || now.toLocaleString('ur', { month: 'long' }),
+          bill_year: savedBill.bill_year || now.getFullYear(),
+          bill_time: savedBill.bill_time || now.toLocaleTimeString('ur-PK'),
+          bill_day_name: savedBill.bill_day_name || now.toLocaleDateString('ur-PK', { weekday: 'long' }),
+          items: cartItems.map(item => ({
+            item_name: item.item_name,
+            quantity: item.quantity,
+            requested_unit: item.requested_unit,
+            unit_price: item.unit_price,
+            total_amount: item.total_amount
+          })),
+          total_amount: totalCartAmount
+        };
 
-    printWindow.document.write(`
-    <!DOCTYPE html>
-    <html dir="rtl">
-    <head>
-      <title>بل پرنٹ - ${billData.bill_id}</title>
-      <meta charset="UTF-8">
-      <style>
-        @media print {
-          body { margin: 0; padding: 0; }
-          .no-print { display: none; }
-        }
-      </style>
-    </head>
-    <body>
-      <div id="root"></div>
-      <div class="no-print" style="text-align:center; padding:20px; position:fixed; bottom:0; left:0; right:0; background:white; border-top:1px solid #ddd;">
-        <button onclick="window.print()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#10b981; color:white; border:none; border-radius:8px;">🖨️ پرنٹ کریں</button>
-        <button onclick="window.close()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#ef4444; color:white; border:none; border-radius:8px;">✕ بند کریں</button>
-      </div>
-      <script>
-        // Auto print after load
-        setTimeout(() => {
-          window.print();
-        }, 1000);
-      </script>
-    </body>
-    </html>
-  `);
-    printWindow.document.close();
+        setShowBillPreview(billData);
+        showMsg("✅ بل کامیابی سے جنریٹ اور محفوظ ہو گیا", "success");
 
-    // Write the bill content after React loads
-    setTimeout(() => {
-      const rootDiv = printWindow.document.getElementById('root');
-      if (rootDiv) {
-        rootDiv.innerHTML = getBillHTML(billData, shopInfo, user);
+        setCartItems([]);
+        setFilteredItems([]);
+
+        if (onItemAdded) onItemAdded();
+      } else {
+        showMsg("❌ بل جنریٹ کرنے میں خرابی", "error");
       }
-    }, 100);
-  };
-
-  // Helper function to generate bill HTML
-  const getBillHTML = (billData, shopInfo, user) => {
-    return `
-    <div style="padding:20px; font-family:'Noto Nastaliq Urdu','Jameel Noori Nastaleeq',serif" dir="rtl">
-      <div style="text-align:center; margin-bottom:30px; border-bottom:2px solid #ddd; padding-bottom:20px">
-        <div style="font-size:24px; font-weight:bold; color:#10b981">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
-        <div style="color:#666; font-size:12px">${shopInfo.address || ""}</div>
-        <div style="color:#666; font-size:12px">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
-      </div>
-      <div style="text-align:center; margin:20px 0; font-size:20px; font-weight:bold">💰 نقد بل</div>
-      <div style="display:flex; justify-content:space-between; margin:20px 0; padding:15px; background:#f9f9f9; border-radius:8px">
-        <div style="text-align:center"><div style="font-size:11px; color:#666">بل نمبر</div><div style="font-weight:bold">#${billData.bill_id}</div></div>
-        <div style="text-align:center"><div style="font-size:11px; color:#666">کسٹمر</div><div style="font-weight:bold">نقد</div></div>
-        <div style="text-align:center"><div style="font-size:11px; color:#666">تاریخ</div><div style="font-weight:bold">${billData.bill_day_name}، ${billData.bill_day} ${billData.bill_month} ${billData.bill_year}</div></div>
-        <div style="text-align:center"><div style="font-size:11px; color:#666">وقت</div><div style="font-weight:bold">${billData.bill_time}</div></div>
-      </div>
-      <table style="width:100%; border-collapse:collapse">
-        <thead><tr><th style="padding:10px; border-bottom:2px solid #ddd">آئٹم</th><th style="padding:10px; border-bottom:2px solid #ddd">مقدار</th><th style="padding:10px; border-bottom:2px solid #ddd">اکائی</th><th style="padding:10px; border-bottom:2px solid #ddd">فی اکائی</th><th style="padding:10px; border-bottom:2px solid #ddd">کل</th></tr></thead>
-        <tbody>${billData.items?.map(item => `<tr><td style="padding:10px; border-bottom:1px solid #eee; text-align:right">${item.item_name}</td><td style="padding:10px; text-align:center">${item.quantity}</td><td style="padding:10px; text-align:center">${item.requested_unit}</td><td style="padding:10px; text-align:center">${item.unit_price}</td><td style="padding:10px; text-align:center">${item.total_amount}</td></tr>`).join('')}</tbody>
-      </table>
-      <div style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:20px; border-radius:12px; text-align:center; margin:20px 0">
-        <div>کل قابل ادائیگی</div>
-        <div style="font-size:32px; font-weight:bold">${billData.total_amount?.toLocaleString()} روپے</div>
-      </div>
-      <div style="text-align:center; margin-top:40px; padding-top:15px; border-top:1px solid #ddd; color:#999">شکریہ! دوبارہ تشریف لائیں۔</div>
-    </div>
-  `;
+    } catch (err) {
+      console.error("Bill generation failed:", err);
+      const errorMsg = err.response?.data?.detail || "بل جنریٹ کرنے میں خرابی";
+      showMsg(`❌ ${errorMsg}`, "error");
+    } finally {
+      setGeneratingBill(false);
+    }
   };
 
   // Print bill
-  // Print bill - Fixed version without UI freeze
-  const printBill = (billData) => {
-    // Create a hidden iframe instead of window.open
+  const handlePrintBill = (billData) => {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
     iframe.style.width = '0';
@@ -220,175 +351,91 @@ function BillItems({ onItemAdded, onClose }) {
     const iframeWindow = iframe.contentWindow;
     const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
 
-    // Write content to iframe
+    const escapeHtml = (text) => {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
     iframeDocument.open();
     iframeDocument.write(`
-    <!DOCTYPE html>
-    <html dir="rtl">
-    <head>
-      <title>نقد بل - ${billData.bill_id}</title>
-      <meta charset="UTF-8">
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          padding: 20px;
-          line-height: 1.6;
-          background: #fff;
-          color: #333;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-          border-bottom: 2px solid #ddd;
-          padding-bottom: 20px;
-        }
-        .shop-name {
-          font-size: 24px;
-          font-weight: bold;
-          color: #10b981;
-          margin-bottom: 8px;
-        }
-        .shop-address {
-          color: #666;
-          font-size: 12px;
-        }
-        .bill-title {
-          text-align: center;
-          margin: 20px 0;
-          font-size: 20px;
-          font-weight: bold;
-          color: #333;
-        }
-        .bill-info {
-          display: flex;
-          justify-content: space-between;
-          margin: 20px 0;
-          padding: 15px;
-          background: #f9f9f9;
-          border-radius: 8px;
-          flex-wrap: wrap;
-          gap: 10px;
-        }
-        .info-group {
-          text-align: center;
-          flex: 1;
-        }
-        .info-label {
-          font-size: 11px;
-          color: #666;
-          margin-bottom: 3px;
-        }
-        .info-value {
-          font-size: 14px;
-          font-weight: bold;
-          color: #333;
-        }
-        .items-table {
-          width: 100%;
-          margin: 20px 0;
-          border-collapse: collapse;
-        }
-        .items-table th,
-        .items-table td {
-          padding: 10px;
-          border-bottom: 1px solid #eee;
-          text-align: center;
-        }
-        .items-table th {
-          background: #f5f5f5;
-          font-weight: bold;
-          border-bottom: 2px solid #ddd;
-        }
-        .items-table td:first-child {
-          text-align: right;
-        }
-        .total-box {
-          background: linear-gradient(135deg, #10b981, #059669);
-          color: white;
-          padding: 20px;
-          border-radius: 12px;
-          text-align: center;
-          margin: 20px 0;
-        }
-        .total-label {
-          font-size: 14px;
-          opacity: 0.9;
-          margin-bottom: 8px;
-        }
-        .total-value {
-          font-size: 32px;
-          font-weight: bold;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 40px;
-          padding-top: 15px;
-          border-top: 1px solid #ddd;
-          color: #999;
-          font-size: 11px;
-        }
-        @media print {
-          body { padding: 0; margin: 0; }
-          .no-print { display: none; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div class="shop-name">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
-        <div class="shop-address">${shopInfo.address || ""}</div>
-        <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
-      </div>
-      <div class="bill-title">💰 نقد بل</div>
-      <div class="bill-info">
-        <div class="info-group"><div class="info-label">بل نمبر</div><div class="info-value">#${billData.bill_id}</div></div>
-        <div class="info-group"><div class="info-label">کسٹمر</div><div class="info-value">${billData.customer_name || "نقد"}</div></div>
-        <div class="info-group"><div class="info-label">تاریخ</div><div class="info-value">${billData.bill_day_name}، ${billData.bill_day} ${billData.bill_month} ${billData.bill_year}</div></div>
-        <div class="info-group"><div class="info-label">وقت</div><div class="info-value">${billData.bill_time}</div></div>
-      </div>
-      <table class="items-table">
-        <thead>
-          <tr><th>آئٹم</th><th>مقدار</th><th>اکائی</th><th>فی اکائی (Rs.)</th><th>کل (Rs.)</th></tr>
-        </thead>
-        <tbody>
-          ${billData.items?.map(item => `
-            <tr>
-              <td style="text-align:right">${escapeHtml(item.item_name)}</td>
-              <td>${item.quantity}</td>
-              <td>${escapeHtml(item.requested_unit)}</td>
-              <td>${item.unit_price}</td>
-              <td>${item.total_amount}</td>
-            </tr>
-          `).join('') || '<tr><td colspan="5">کوئی آئٹم نہیں</td></tr>'}
-        </tbody>
-      </table>
-      <div class="total-box">
-        <div class="total-label">کل قابل ادائیگی</div>
-        <div class="total-value">${billData.total_amount?.toLocaleString()} روپے</div>
-      </div>
-      <div class="footer">
-        شکریہ! دوبارہ تشریف لائیں۔
-      </div>
-      <div class="no-print" style="text-align:center; margin-top:20px;">
-        <button onclick="window.print()" style="padding:10px 20px; margin:10px; cursor:pointer;">🖨️ پرنٹ کریں</button>
-        <button onclick="window.close()" style="padding:10px 20px; margin:10px; cursor:pointer;">✕ بند کریں</button>
-      </div>
-      <script>
-        // Auto-trigger print after a short delay
-        setTimeout(() => {
-          window.print();
-        }, 500);
-      </script>
-    </body>
-    </html>
-  `);
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <title>نقد بل - ${billData.bill_id}</title>
+        <meta charset="UTF-8">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+            background: #fff;
+            color: #333;
+          }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 20px; }
+          .shop-name { font-size: 24px; font-weight: bold; color: #10b981; margin-bottom: 8px; }
+          .shop-address { color: #666; font-size: 12px; }
+          .bill-title { text-align: center; margin: 20px 0; font-size: 20px; font-weight: bold; color: #333; }
+          .bill-info { display: flex; justify-content: space-between; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; flex-wrap: wrap; gap: 10px; }
+          .info-group { text-align: center; flex: 1; }
+          .info-label { font-size: 11px; color: #666; margin-bottom: 3px; }
+          .info-value { font-size: 14px; font-weight: bold; color: #333; }
+          .items-table { width: 100%; margin: 20px 0; border-collapse: collapse; }
+          .items-table th, .items-table td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; }
+          .items-table th { background: #f5f5f5; font-weight: bold; border-bottom: 2px solid #ddd; }
+          .items-table td:first-child { text-align: right; }
+          .total-box { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0; }
+          .total-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
+          .total-value { font-size: 32px; font-weight: bold; }
+          .footer { text-align: center; margin-top: 40px; padding-top: 15px; border-top: 1px solid #ddd; color: #999; font-size: 11px; }
+          @media print { body { padding: 0; margin: 0; } .no-print { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="shop-name">${escapeHtml(shopInfo.shop_name) || "360 آسان اسٹور"}</div>
+          <div class="shop-address">${escapeHtml(shopInfo.address) || ""}</div>
+          <div class="shop-address">مالک: ${escapeHtml(shopInfo.owner_name) || escapeHtml(user?.username) || ""}</div>
+        </div>
+        <div class="bill-title">💰 نقد بل</div>
+        <div class="bill-info">
+          <div class="info-group"><div class="info-label">بل نمبر</div><div class="info-value">#${billData.bill_id}</div></div>
+          <div class="info-group"><div class="info-label">کسٹمر</div><div class="info-value">${escapeHtml(billData.customer_name) || "نقد"}</div></div>
+          <div class="info-group"><div class="info-label">تاریخ</div><div class="info-value">${escapeHtml(billData.bill_day_name)}، ${billData.bill_day} ${escapeHtml(billData.bill_month)} ${billData.bill_year}</div></div>
+          <div class="info-group"><div class="info-label">وقت</div><div class="info-value">${billData.bill_time}</div></div>
+        </div>
+        <table class="items-table">
+          <thead><tr><th>آئٹم</th><th>مقدار</th><th>اکائی</th><th>فی اکائی (Rs.)</th><th>کل (Rs.)</th></tr></thead>
+          <tbody>
+            ${billData.items?.map(item => `
+              <tr>
+                <td style="text-align:right">${escapeHtml(item.item_name)}</td>
+                <td style="text-align:center">${item.quantity}</td>
+                <td style="text-align:center">${escapeHtml(item.requested_unit)}</td>
+                <td style="text-align:center">${item.unit_price}</td>
+                <td style="text-align:center">${item.total_amount}</td>
+              </tr>
+            `).join('') || '<tr><td colspan="5" style="text-align:center">کوئی آئٹم نہیں</td></tr>'}
+          </tbody>
+        </table>
+        <div class="total-box">
+          <div class="total-label">کل قابل ادائیگی</div>
+          <div class="total-value">${billData.total_amount?.toLocaleString()} روپے</div>
+        </div>
+        <div class="footer">شکریہ! دوبارہ تشریف لائیں۔</div>
+        <div class="no-print" style="text-align:center; margin-top:20px;">
+          <button onclick="window.print()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#10b981; color:white; border:none; border-radius:8px;">🖨️ پرنٹ کریں</button>
+          <button onclick="window.close()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#ef4444; color:white; border:none; border-radius:8px;">✕ بند کریں</button>
+        </div>
+        <script>setTimeout(() => { window.print(); }, 500);</script>
+      </body>
+      </html>
+    `);
     iframeDocument.close();
-
-    // Focus on iframe and trigger print
     iframeWindow.focus();
 
-    // Clean up iframe after printing is done or closed
     const cleanup = () => {
       setTimeout(() => {
         if (document.body.contains(iframe)) {
@@ -397,25 +444,13 @@ function BillItems({ onItemAdded, onClose }) {
       }, 1000);
     };
 
-    // Handle when print dialog closes
     iframeWindow.onafterprint = cleanup;
-
-    // Fallback cleanup if onafterprint is not supported
     setTimeout(cleanup, 30000);
-  };
-
-  // Helper function to escape HTML to prevent XSS
-  const escapeHtml = (text) => {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   };
 
   const handleSearchChange = (e) => {
     const searchTerm = e.target.value;
     setSearch(searchTerm);
-
     if (!searchTerm.trim()) {
       setFilteredItems(cartItems);
     } else {
@@ -426,11 +461,9 @@ function BillItems({ onItemAdded, onClose }) {
     }
   };
 
-  // Handle search for available items
   const handleAvailableItemsSearch = (e) => {
     const searchTerm = e.target.value;
     setAvailableItemsSearch(searchTerm);
-
     if (!searchTerm.trim()) {
       setFilteredAvailableItems(availableItems);
     } else {
@@ -439,17 +472,6 @@ function BillItems({ onItemAdded, onClose }) {
       );
       setFilteredAvailableItems(filtered);
     }
-  };
-
-  const handleClearCart = () => {
-    if (cartItems.length === 0) {
-      showMsg("کارٹ پہلے سے خالی ہے", "error");
-      return;
-    }
-    setCartItems([]);
-    setFilteredItems([]);
-    showMsg("✅ کارٹ خالی کر دیا گیا", "success");
-    if (onItemAdded) onItemAdded();
   };
 
   const handleAddNew = () => {
@@ -461,180 +483,16 @@ function BillItems({ onItemAdded, onClose }) {
     setShowForm(false);
     setAutoFillFormData(null);
     if (shouldRefresh) {
+      fetchCartFromBackend();
       if (onItemAdded) onItemAdded();
     }
-  };
-
-  // New increment function - increases quantity by 1
-  const handleIncrement = (item) => {
-    const newQuantity = item.quantity + 1;
-    const updatedCart = cartItems.map(cartItem =>
-      cartItem.id === item.id
-        ? {
-          ...cartItem,
-          quantity: newQuantity,
-          total_amount: newQuantity * cartItem.unit_price
-        }
-        : cartItem
-    );
-    setCartItems(updatedCart);
-    setFilteredItems(updatedCart);
-    showMsg(`✅ ${item.item_name} کی تعداد ${newQuantity} کر دی گئی`, "success");
-    if (onItemAdded) onItemAdded();
-  };
-
-  // New decrement function - decreases quantity by 1, removes if quantity becomes 0
-  const handleDecrement = (item) => {
-    if (item.quantity <= 1) {
-      // Remove item if quantity is 1 and user tries to decrement
-      const updatedCart = cartItems.filter(cartItem => cartItem.id !== item.id);
-      setCartItems(updatedCart);
-      setFilteredItems(updatedCart);
-      showMsg(`✅ ${item.item_name} کارٹ سے حذف کر دیا گیا`, "success");
-    } else {
-      const newQuantity = item.quantity - 1;
-      const updatedCart = cartItems.map(cartItem =>
-        cartItem.id === item.id
-          ? {
-            ...cartItem,
-            quantity: newQuantity,
-            total_amount: newQuantity * cartItem.unit_price
-          }
-          : cartItem
-      );
-      setCartItems(updatedCart);
-      setFilteredItems(updatedCart);
-      showMsg(`✅ ${item.item_name} کی تعداد ${newQuantity} کر دی گئی`, "success");
-    }
-    if (onItemAdded) onItemAdded();
-  };
-
-  // Remove item from cart
-  const handleRemoveFromCart = (item) => {
-    const updatedCart = cartItems.filter(cartItem => cartItem.id !== item.id);
-    setCartItems(updatedCart);
-    setFilteredItems(updatedCart);
-    showMsg(`✅ ${item.item_name} کارٹ سے حذف کر دیا گیا`, "success");
-    if (onItemAdded) onItemAdded();
-  };
-
-  // Add to cart from available items - If already exists, increase quantity instead of creating duplicate
-  const handleAddToCart = (item) => {
-    const existingItem = cartItems.find(cartItem => cartItem.item_name === item.item_name);
-
-    if (existingItem) {
-      // Item already exists - increase quantity by 1
-      const newQuantity = existingItem.quantity + 1;
-      const updatedCart = cartItems.map(cartItem =>
-        cartItem.id === existingItem.id
-          ? {
-            ...cartItem,
-            quantity: newQuantity,
-            total_amount: newQuantity * cartItem.unit_price
-          }
-          : cartItem
-      );
-      setCartItems(updatedCart);
-      setFilteredItems(updatedCart);
-      showMsg(`✅ ${item.item_name} کی تعداد بڑھا دی گئی (اب ${newQuantity})`, "success");
-    } else {
-      // Add new item with price from database
-      const newItem = createLocalCartItem({
-        item_name: item.item_name,
-        requested_unit: item.item_unit || "عدد",
-        quantity: 1,
-        unit_price: item.unit_price || 0
-      });
-      const updatedCart = [...cartItems, newItem];
-      setCartItems(updatedCart);
-      setFilteredItems(updatedCart);
-      showMsg(`✅ ${item.item_name} کارٹ میں شامل کر دیا گیا`, "success");
-    }
-    if (onItemAdded) onItemAdded();
-  };
-
-  // Add custom item from form with validation
-  const addCustomItemToCart = async (formData) => {
-    const finalUnit = formData.requested_unit === "__custom"
-      ? formData.custom_unit
-      : formData.requested_unit;
-
-    // VALIDATION 1: Check if item exists in database
-    const existingItemInDB = availableItems.find(
-      item => item.item_name.toLowerCase() === formData.item_name.toLowerCase()
-    );
-
-    if (!existingItemInDB) {
-      showMsg(`❌ "${formData.item_name}" موجود نہیں ہے - پہلے آئٹمز میں شامل کریں`, "error");
-      return;
-    }
-
-    // VALIDATION 2: Check if unit matches the item's unit from database
-    if (existingItemInDB.item_unit !== finalUnit) {
-      showMsg(`❌ "${formData.item_name}" کی اکائی "${existingItemInDB.item_unit}" ہے - "${finalUnit}" نہیں`, "error");
-      return;
-    }
-
-    // If validation passes, add to cart
-    const existingItemInCart = cartItems.find(cartItem => cartItem.item_name === formData.item_name);
-
-    if (existingItemInCart) {
-      // Item already exists in cart - increase quantity
-      const newQuantity = existingItemInCart.quantity + Number(formData.quantity);
-      const updatedCart = cartItems.map(cartItem =>
-        cartItem.id === existingItemInCart.id
-          ? {
-            ...cartItem,
-            quantity: newQuantity,
-            total_amount: newQuantity * existingItemInDB.unit_price
-          }
-          : cartItem
-      );
-      setCartItems(updatedCart);
-      setFilteredItems(updatedCart);
-      showMsg(`✅ ${formData.item_name} کی تعداد بڑھا دی گئی (اب ${newQuantity})`, "success");
-    } else {
-      // Add new item to cart
-      const newItem = createLocalCartItem({
-        item_name: formData.item_name,
-        requested_unit: finalUnit,
-        quantity: Number(formData.quantity),
-        unit_price: existingItemInDB.unit_price
-      });
-      const updatedCart = [...cartItems, newItem];
-      setCartItems(updatedCart);
-      setFilteredItems(updatedCart);
-      showMsg(`✅ ${formData.item_name} کارٹ میں شامل کر دیا گیا`, "success");
-    }
-    if (onItemAdded) onItemAdded();
-  };
-
-  // Voice command callbacks
-  const voiceCallbacks = {
-    onShowAddForm: (formData) => {
-      setVoiceFormData(formData);
-      setShowVoiceAddForm(true);
-    },
-    onShowDeleteConfirm: (deleteData) => {
-      setVoiceDeleteData(deleteData);
-    },
-    onClearCart: () => {
-      handleClearCart();
-    },
-    onBillAction: () => {
-      handleGenerateBill();
-    }
-  };
-
-  // Handle voice command received
-  const handleVoiceCommand = async (commandData) => {
-    await voiceService.processCommand(commandData, voiceCallbacks);
   };
 
   useEffect(() => {
     fetchShopInfo();
     fetchUser();
-    fetchAvailableItems(); // Fetch real items from API
+    fetchAvailableItems();
+    fetchCartFromBackend();
   }, []);
 
   const totalCartAmount = cartItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
@@ -642,22 +500,15 @@ function BillItems({ onItemAdded, onClose }) {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-3 md:p-6" dir="rtl">
-      {/* Voice Input Component */}
-      <VoiceInput
-        onCommandReceived={handleVoiceCommand}
-        onClose={() => { }}
-        feature="cart"
-      />
-
-      {/* Message Toast with animation */}
+      {/* Message Toast */}
       {message.text && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl animate-slide-down text-sm md:text-base transition-all duration-300"
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl"
           style={{
             backgroundColor: message.type === 'success' ? '#10b981' : '#ef4444',
             color: 'white'
           }}>
           <div className="flex items-center gap-2">
-            <span className="text-lg">{message.type === 'success' ? '✅' : '❌'}</span>
+            <span>{message.type === 'success' ? '✅' : '❌'}</span>
             <span className="font-urdu">{message.text}</span>
           </div>
         </div>
@@ -666,10 +517,10 @@ function BillItems({ onItemAdded, onClose }) {
       {/* Bill Preview Modal */}
       {showBillPreview && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex justify-center items-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-auto transform transition-all duration-300 scale-100">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-auto">
             <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-800">🧾 بل کی تفصیل</h2>
-              <button onClick={() => setShowBillPreview(null)} className="text-gray-500 hover:text-gray-700 text-2xl transition-colors">✕</button>
+              <button onClick={() => setShowBillPreview(null)} className="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
             </div>
             <div className="p-6">
               <div className="text-center mb-6">
@@ -711,7 +562,6 @@ function BillItems({ onItemAdded, onClose }) {
               </div>
 
               <div className="flex gap-3">
-
                 <button onClick={() => {
                   setShowBillPreview(null);
                   handlePrintBill(showBillPreview);
@@ -724,60 +574,9 @@ function BillItems({ onItemAdded, onClose }) {
         </div>
       )}
 
-      {/* Voice Delete Confirmation Modal */}
-      {voiceDeleteData && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex justify-center items-center p-4">
-          <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center transform transition-all duration-300 scale-100">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">⚠️</div>
-            <h3 className="text-xl font-bold mb-2">کیا آپ کو یقین ہے؟</h3>
-            <p className="text-gray-500 text-sm mb-4">
-              "{voiceDeleteData.name}" (مقدار: {voiceDeleteData.quantity} {voiceDeleteData.unit})
-              <br />
-              کارٹ سے ہمیشہ کے لیے حذف ہو جائے گا۔
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={async () => {
-                  await voiceService.executeDelete(voiceDeleteData.id, voiceDeleteData.name);
-                  setVoiceDeleteData(null);
-                }}
-                className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-all text-sm"
-              >
-                ہاں، حذف کریں
-              </button>
-              <button onClick={() => setVoiceDeleteData(null)} className="flex-1 bg-gray-100 text-gray-800 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all text-sm">
-                منسوخ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Voice Add/Edit Form Modal */}
-      {showVoiceAddForm && voiceFormData && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex justify-center items-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
-            <BillItemForm
-              initialData={voiceFormData}
-              onCancel={() => {
-                setShowVoiceAddForm(false);
-                setVoiceFormData(null);
-              }}
-              onSave={(formData) => {
-                addCustomItemToCart(formData);
-                setShowVoiceAddForm(false);
-                setVoiceFormData(null);
-              }}
-              showMsg={showMsg}
-              availableItems={availableItems}
-            />
-          </div>
-        </div>
-      )}
-
       {/* Main Layout: 2 Columns */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* LEFT COLUMN: Add Items Section - Professional Design */}
+        {/* LEFT COLUMN: Add Items Section */}
         <div className="lg:w-1/3 bg-white rounded-2xl shadow-xl overflow-hidden h-fit border border-gray-100">
           <div className="p-5 border-b bg-gradient-to-r from-green-50 to-emerald-50">
             <h2 className="text-xl font-bold text-gray-800 font-urdu flex items-center gap-2">
@@ -809,7 +608,8 @@ function BillItems({ onItemAdded, onClose }) {
                   <button
                     key={item.item_id}
                     onClick={() => handleAddToCart(item)}
-                    className="w-full text-right p-4 border rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all flex justify-between items-center group shadow-sm hover:shadow-md"
+                    disabled={loading}
+                    className="w-full text-right p-4 border rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all flex justify-between items-center group shadow-sm hover:shadow-md disabled:opacity-50"
                   >
                     <div className="text-right">
                       <span className="font-bold text-gray-800 text-lg block">{item.item_name}</span>
@@ -823,19 +623,7 @@ function BillItems({ onItemAdded, onClose }) {
               ) : (
                 <div className="text-center py-10 text-gray-400">
                   <span className="text-4xl block mb-2">🔍</span>
-                  <span>
-                    {availableItemsSearch
-                      ? `"${availableItemsSearch}" کے نام سے کوئی آئٹم نہیں ملا`
-                      : "کوئی آئٹم موجود نہیں ہے"}
-                  </span>
-                  {!availableItemsSearch && (
-                    <button
-                      onClick={fetchAvailableItems}
-                      className="block mx-auto mt-4 text-green-600 hover:text-green-700 text-sm font-bold"
-                    >
-                      ↻ دوبارہ لوڈ کریں
-                    </button>
-                  )}
+                  <span>کوئی آئٹم موجود نہیں ہے</span>
                 </div>
               )}
             </div>
@@ -851,9 +639,8 @@ function BillItems({ onItemAdded, onClose }) {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Cart Section - Professional Design */}
+        {/* RIGHT COLUMN: Cart Section */}
         <div className="lg:w-2/3 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-          {/* Cart Header */}
           <div className="p-5 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div>
@@ -865,7 +652,7 @@ function BillItems({ onItemAdded, onClose }) {
               <div className="flex gap-3">
                 <button
                   onClick={handleClearCart}
-                  disabled={cartItems.length === 0}
+                  disabled={cartItems.length === 0 || loading}
                   className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-3 rounded-xl font-bold text-sm transition-all disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md"
                 >
                   🗑️ کارٹ خالی کریں
@@ -882,7 +669,6 @@ function BillItems({ onItemAdded, onClose }) {
             </div>
           </div>
 
-          {/* Search for cart items */}
           <div className="p-4 border-b bg-gray-50">
             <div className="relative">
               <input
@@ -896,20 +682,12 @@ function BillItems({ onItemAdded, onClose }) {
             </div>
           </div>
 
-          {/* Cart Items List with Increment/Decrement buttons */}
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             {cartItems.length === 0 ? (
               <div className="p-16 text-center">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-24 h-24 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-5xl">🛒</div>
-                  <p className="text-gray-500 text-lg font-medium">
-                    {search ? `"${search}" کے نام سے کوئی آئٹم نہیں ملا` : "کارٹ خالی ہے۔ بائیں جانب سے آئٹم شامل کریں"}
-                  </p>
-                  {search && (
-                    <button onClick={() => { setSearch(""); setFilteredItems(cartItems); }} className="text-green-600 hover:text-green-700 font-bold underline">
-                      تمام آئٹمز دیکھیں
-                    </button>
-                  )}
+                  <p className="text-gray-500 text-lg font-medium">کارٹ خالی ہے۔ بائیں جانب سے آئٹم شامل کریں</p>
                 </div>
               </div>
             ) : (
@@ -926,13 +704,14 @@ function BillItems({ onItemAdded, onClose }) {
                 </thead>
                 <tbody>
                   {(search ? filteredItems : cartItems).map((item) => (
-                    <tr key={item.id} className="border-b hover:bg-blue-50/30 transition-colors">
+                    <tr key={item.cart_item_id} className="border-b hover:bg-blue-50/30 transition-colors">
                       <td className="p-4 font-bold text-gray-800 text-right">{item.item_name}</td>
                       <td className="p-2 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleDecrement(item)}
-                            className="w-9 h-9 rounded-full bg-red-100 text-red-600 font-bold text-xl hover:bg-red-600 hover:text-white transition-all transform hover:scale-105 shadow-sm"
+                            disabled={loading}
+                            className="w-9 h-9 rounded-full bg-red-100 text-red-600 font-bold text-xl hover:bg-red-600 hover:text-white transition-all transform hover:scale-105 shadow-sm disabled:opacity-50"
                           >
                             -
                           </button>
@@ -941,19 +720,21 @@ function BillItems({ onItemAdded, onClose }) {
                           </span>
                           <button
                             onClick={() => handleIncrement(item)}
-                            className="w-9 h-9 rounded-full bg-green-100 text-green-600 font-bold text-xl hover:bg-green-600 hover:text-white transition-all transform hover:scale-105 shadow-sm"
+                            disabled={loading}
+                            className="w-9 h-9 rounded-full bg-green-100 text-green-600 font-bold text-xl hover:bg-green-600 hover:text-white transition-all transform hover:scale-105 shadow-sm disabled:opacity-50"
                           >
                             +
                           </button>
                         </div>
                       </td>
-                      <td className="p-4 text-center text-gray-600 font-medium">{item.requested_unit}</td>
+                      <td className="p-4 text-center text-gray-600 font-medium">{item.requested_unit} </td>
                       <td className="p-4 text-center font-mono text-blue-700 font-bold">Rs. {item.unit_price?.toLocaleString() || 0}</td>
                       <td className="p-4 text-center font-bold text-green-700">Rs. {item.total_amount?.toLocaleString() || 0}</td>
                       <td className="p-4 text-center">
                         <button
                           onClick={() => handleRemoveFromCart(item)}
-                          className="text-red-600 hover:text-white font-bold text-sm transition-all hover:bg-red-600 px-3 py-1.5 rounded-lg bg-red-50 hover:shadow-md"
+                          disabled={loading}
+                          className="text-red-600 hover:text-white font-bold text-sm transition-all hover:bg-red-600 px-3 py-1.5 rounded-lg bg-red-50 hover:shadow-md disabled:opacity-50"
                         >
                           🗑️ حذف
                         </button>
@@ -977,7 +758,7 @@ function BillItems({ onItemAdded, onClose }) {
       {/* Manual Add Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex justify-center items-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
             <BillItemForm
               initialData={autoFillFormData}
               onCancel={() => handleFormClose(false)}
@@ -995,7 +776,7 @@ function BillItems({ onItemAdded, onClose }) {
   );
 }
 
-// ======================== BillItemForm Component with Validation ========================
+// BillItemForm Component
 function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }) {
   const [formData, setFormData] = useState({
     item_name: "",
@@ -1009,7 +790,6 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
   const [itemExists, setItemExists] = useState(null);
   const [matchingItem, setMatchingItem] = useState(null);
 
-  // Check if item exists in database when item_name changes
   useEffect(() => {
     if (formData.item_name.trim()) {
       const foundItem = availableItems.find(
@@ -1018,17 +798,12 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
       setMatchingItem(foundItem);
       setItemExists(!!foundItem);
 
-      // Auto-fill the unit if item exists
-      if (foundItem && formData.requested_unit !== foundItem.item_unit) {
+      if (foundItem) {
         setFormData(prev => ({
           ...prev,
           requested_unit: foundItem.item_unit,
           custom_unit: ""
         }));
-        // Clear any previous unit error
-        if (errors.requested_unit) {
-          setErrors(prev => ({ ...prev, requested_unit: "" }));
-        }
       }
     } else {
       setItemExists(null);
@@ -1044,41 +819,26 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
         requested_unit: initialData.requested_unit || "",
         custom_unit: initialData.custom_unit || ""
       });
-      if (initialData.requested_unit && !ALLOWED_UNITS.includes(initialData.requested_unit)) {
-        setFormData(prev => ({
-          ...prev,
-          requested_unit: "__custom",
-          custom_unit: initialData.requested_unit
-        }));
-      }
     }
   }, [initialData]);
 
   const validateForm = () => {
     let errs = {};
 
-    // Validate item name
     if (!formData.item_name.trim()) {
       errs.item_name = "آئٹم کا نام درج کرنا ضروری ہے";
-    } else if (formData.item_name.length < 2) {
-      errs.item_name = "آئٹم کا نام کم از کم 2 حروف کا ہونا چاہیے";
     } else if (!itemExists) {
-      errs.item_name = `"${formData.item_name}" موجود نہیں ہے - پہلے آئٹمز میں شامل کریں`;
+      errs.item_name = `"${formData.item_name}" موجود نہیں ہے`;
     }
 
-    // Validate quantity
     if (!formData.quantity) {
       errs.quantity = "مقدار درج کرنا ضروری ہے";
     } else if (Number(formData.quantity) <= 0) {
       errs.quantity = "مقدار صفر سے زیادہ ہونی چاہیے";
     }
 
-    // Validate unit
-    const finalUnit = formData.requested_unit === "__custom" ? formData.custom_unit : formData.requested_unit;
-    if (!finalUnit || !finalUnit.trim()) {
-      errs.requested_unit = "اکائی منتخب کریں یا اپنی مرضی کی اکائی درج کریں";
-    } else if (matchingItem && finalUnit !== matchingItem.item_unit) {
-      errs.requested_unit = `"${formData.item_name}" کی صحیح اکائی "${matchingItem.item_unit}" ہے`;
+    if (!formData.requested_unit) {
+      errs.requested_unit = "اکائی منتخب کریں";
     }
 
     setErrors(errs);
@@ -1090,15 +850,10 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
     if (!validateForm()) return;
 
     setIsSubmitting(true);
-
-    const finalUnit = formData.requested_unit === "__custom"
-      ? formData.custom_unit.trim()
-      : formData.requested_unit;
-
     const submissionData = {
       item_name: formData.item_name.trim(),
       quantity: Number(formData.quantity),
-      requested_unit: finalUnit,
+      requested_unit: formData.requested_unit,
     };
 
     setTimeout(() => {
@@ -1108,9 +863,9 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6 max-w-2xl mx-auto">
+    <div className="bg-white rounded-2xl shadow-xl p-6">
       <h3 className="text-2xl font-bold mb-6 border-r-4 border-green-600 pr-3 text-right">
-        {initialData?.mode === "EDIT" ? "✏️ آئٹم کی مقدار تبدیل کریں" : "➕ نیا نقد آئٹم شامل کریں"}
+        ➕ نیا نقد آئٹم شامل کریں
       </h3>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -1120,22 +875,26 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
           </label>
           <input
             type="text"
+            list="available-items-list"
             value={formData.item_name}
             onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
             className={`w-full p-3 border-2 rounded-xl outline-none transition-all text-right text-base ${errors.item_name ? "border-red-500 bg-red-50" :
               itemExists === true ? "border-green-500 bg-green-50" :
                 "border-gray-200 focus:border-green-500"
               }`}
-            placeholder="مثال: انڈے، دودھ، چاول"
+            placeholder="آئٹم نام لکھیں یا منتخب کریں..."
+            autoComplete="off"
           />
-          {itemExists === true && !errors.item_name && (
+          <datalist id="available-items-list">
+            {availableItems.map(item => (
+              <option key={item.item_id} value={item.item_name}>
+                {item.item_name} - {item.item_unit} (Rs. {item.unit_price})
+              </option>
+            ))}
+          </datalist>
+          {itemExists === true && !errors.item_name && matchingItem && (
             <p className="text-green-600 text-sm mt-1 text-right">
-              ✓ یہ آئٹم موجود ہے (اکائی: {matchingItem?.item_unit}, قیمت: Rs. {matchingItem?.unit_price})
-            </p>
-          )}
-          {itemExists === false && !errors.item_name && formData.item_name.trim() && (
-            <p className="text-red-600 text-sm mt-1 text-right">
-              ✗ "{formData.item_name}" موجود نہیں ہے - پہلے آئٹمز میں شامل کریں
+              ✓ یہ آئٹم موجود ہے (اکائی: {matchingItem.item_unit}, قیمت: Rs. {matchingItem.unit_price})
             </p>
           )}
           {errors.item_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_name}</p>}
@@ -1172,41 +931,10 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
             >
               <option value="">منتخب کریں</option>
               {ALLOWED_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-              <option value="__custom">✨ دیگر (اپنی مرضی کی)</option>
             </select>
-            {matchingItem && !errors.requested_unit && formData.requested_unit && formData.requested_unit !== matchingItem.item_unit && formData.requested_unit !== "__custom" && (
-              <p className="text-red-600 text-sm mt-1 text-right">
-                ⚠️ "{formData.item_name}" کی اکائی "{matchingItem.item_unit}" ہے
-              </p>
-            )}
             {errors.requested_unit && <p className="text-red-600 text-sm mt-1 text-right">{errors.requested_unit}</p>}
-            {!itemExists && formData.item_name.trim() && (
-              <p className="text-amber-600 text-sm mt-1 text-right">
-                ⚠️ پہلے درست آئٹم نام درج کریں
-              </p>
-            )}
           </div>
         </div>
-
-        {formData.requested_unit === "__custom" && (
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
-              اپنی مرضی کی اکائی <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.custom_unit}
-              onChange={(e) => setFormData({ ...formData, custom_unit: e.target.value })}
-              className="w-full p-3 border-2 border-gray-200 rounded-xl text-right text-base outline-none focus:border-green-500"
-              placeholder="مثال: پیالی، تھیلا"
-            />
-            {matchingItem && formData.custom_unit && formData.custom_unit !== matchingItem.item_unit && (
-              <p className="text-red-600 text-sm mt-1 text-right">
-                ⚠️ "{formData.item_name}" کی صحیح اکائی "{matchingItem.item_unit}" ہے
-              </p>
-            )}
-          </div>
-        )}
 
         <div className="flex gap-3 pt-4">
           <button
