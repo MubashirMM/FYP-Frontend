@@ -66,7 +66,7 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [API, showMsg]);
 
-  // Fetch cart items - FIXED: Handle cart_item_id properly
+  // Fetch cart items - FIXED: Use backend's total_amount directly
   const fetchCartFromBackend = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/cart/items`, getAuthHeader());
@@ -85,7 +85,8 @@ function BillItems({ onItemAdded, onClose }) {
         requested_unit: item.requested_unit,
         unit_price: item.unit_price || 0,
         item_unit: item.item_unit,
-        total_amount: (item.quantity || 0) * (item.unit_price || 0)
+        total_amount: item.total_amount || 0,
+        base_quantity: item.base_quantity || 0
       }));
 
       setCartItems(loadedItems);
@@ -97,14 +98,14 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [API]);
 
-  // FIXED: Add to cart - Check by name AND unit
+  // FIXED: Add to cart - Check by name AND requested_unit
   const handleAddToCart = useCallback(async (item, customUnit = null, customQuantity = 1) => {
     setLoading(true);
     try {
       const requestedUnit = customUnit || item.item_unit;
       const quantity = customQuantity;
 
-      // Check if item with SAME name AND SAME unit already exists in cart
+      // Check if item with SAME name AND SAME requested unit already exists in cart
       const existingItem = cartItems.find(
         cartItem => cartItem.item_name.toLowerCase() === item.item_name.toLowerCase() &&
           cartItem.requested_unit === requestedUnit
@@ -112,6 +113,7 @@ function BillItems({ onItemAdded, onClose }) {
 
       if (existingItem) {
         showMsg(`⚠️ ${item.item_name} (${requestedUnit}) پہلے سے کارٹ میں موجود ہے`, "error");
+        setLoading(false);
         return;
       }
 
@@ -152,7 +154,7 @@ function BillItems({ onItemAdded, onClose }) {
       }, getAuthHeader());
 
       await fetchCartFromBackend();
-      showMsg(`✅ ${item.item_name} کی تعداد ${newQuantity} کر دی گئی`, "success");
+      showMsg(`✅ ${item.item_name} کی تعداد ${newQuantity} ${item.requested_unit} کر دی گئی`, "success");
     } catch (err) {
       console.error("Increment error:", err);
       showMsg(err.response?.data?.detail || "اپڈیٹ کرنے میں خرابی", "error");
@@ -172,7 +174,7 @@ function BillItems({ onItemAdded, onClose }) {
     try {
       if (item.quantity <= 1) {
         await axios.delete(`${API}/cart/item/${item.cart_item_id}`, getAuthHeader());
-        showMsg(`✅ ${item.item_name} کارٹ سے حذف کر دیا گیا`, "success");
+        showMsg(`✅ ${item.item_name} (${item.requested_unit}) کارٹ سے حذف کر دیا گیا`, "success");
       } else {
         const newQuantity = item.quantity - 1;
 
@@ -181,7 +183,7 @@ function BillItems({ onItemAdded, onClose }) {
           requested_unit: item.requested_unit
         }, getAuthHeader());
 
-        showMsg(`✅ ${item.item_name} کی تعداد ${newQuantity} کر دی گئی`, "success");
+        showMsg(`✅ ${item.item_name} کی تعداد ${newQuantity} ${item.requested_unit} کر دی گئی`, "success");
       }
 
       await fetchCartFromBackend();
@@ -204,7 +206,7 @@ function BillItems({ onItemAdded, onClose }) {
     try {
       await axios.delete(`${API}/cart/item/${item.cart_item_id}`, getAuthHeader());
       await fetchCartFromBackend();
-      showMsg(`✅ ${item.item_name} کارٹ سے حذف کر دیا گیا`, "success");
+      showMsg(`✅ ${item.item_name} (${item.requested_unit}) کارٹ سے حذف کر دیا گیا`, "success");
     } catch (err) {
       console.error("Remove error:", err);
       showMsg(err.response?.data?.detail || "حذف کرنے میں خرابی", "error");
@@ -213,7 +215,7 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [API, showMsg, fetchCartFromBackend]);
 
-  // FIXED: Add custom item with unit check
+  // FIXED: Add custom item with unit check - prevent duplicates
   const addCustomItemToCart = useCallback(async (formData) => {
     const finalUnit = formData.requested_unit;
     const itemName = formData.item_name;
@@ -228,7 +230,7 @@ function BillItems({ onItemAdded, onClose }) {
       return;
     }
 
-    // Check if item with same name AND unit exists in cart
+    // Check if item with same name AND same requested unit exists in cart
     const existingInCart = cartItems.find(
       cartItem => cartItem.item_name.toLowerCase() === itemName.toLowerCase() &&
         cartItem.requested_unit === finalUnit
@@ -293,7 +295,7 @@ function BillItems({ onItemAdded, onClose }) {
       const response = await axios.post(`${API}/cart/generate-bill`, {}, getAuthHeader());
 
       if (response.data) {
-        const savedBill = response.data.bill || response.data;
+        const savedBill = response.data;
         const totalCartAmount = cartItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
 
         const now = new Date();
@@ -309,7 +311,7 @@ function BillItems({ onItemAdded, onClose }) {
             item_name: item.item_name,
             quantity: item.quantity,
             requested_unit: item.requested_unit,
-            unit_price: item.unit_price,
+            unit_price: (item.total_amount / item.quantity).toFixed(2), // Price per requested unit
             total_amount: item.total_amount
           })),
           total_amount: totalCartAmount
@@ -335,6 +337,13 @@ function BillItems({ onItemAdded, onClose }) {
   }, [cartItems, API, showMsg, onItemAdded]);
 
   const handlePrintBill = useCallback((billData) => {
+    const escapeHtml = (text) => {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
     iframe.style.width = '0';
@@ -344,13 +353,6 @@ function BillItems({ onItemAdded, onClose }) {
 
     const iframeWindow = iframe.contentWindow;
     const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-
-    const escapeHtml = (text) => {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    };
 
     iframeDocument.open();
     iframeDocument.write(`
@@ -411,7 +413,7 @@ function BillItems({ onItemAdded, onClose }) {
                 <td style="text-align:center">${item.unit_price}</td>
                 <td style="text-align:center">${item.total_amount}</td>
               </tr>
-            `).join('') || '<tr><td colspan="5" style="text-align:center">کوئی آئٹم نہیں</td></tr>'}
+            `).join('') || '<tr><td colspan="5" style="text-align:center">کوئی آئٹم نہیں</td><td style="text-align:center">0</td></tr>'}
           </tbody>
         </table>
         <div class="total-box">
@@ -568,7 +570,7 @@ function BillItems({ onItemAdded, onClose }) {
 
       {/* Main Layout */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* LEFT COLUMN */}
+        {/* LEFT COLUMN - Available Items */}
         <div className="lg:w-1/3 bg-white rounded-2xl shadow-xl overflow-hidden h-fit border border-gray-100">
           <div className="p-5 border-b bg-gradient-to-r from-green-50 to-emerald-50">
             <h2 className="text-xl font-bold text-gray-800 font-urdu flex items-center gap-2">
@@ -605,7 +607,7 @@ function BillItems({ onItemAdded, onClose }) {
                   >
                     <div className="text-right">
                       <span className="font-bold text-gray-800 text-lg block">{item.item_name}</span>
-                      <span className="text-gray-500 text-sm">{item.item_unit} | قیمت: Rs. {item.unit_price}</span>
+                      <span className="text-gray-500 text-sm">{item.item_unit} | قیمت فی {item.item_unit}: Rs. {item.unit_price}</span>
                     </div>
                     <span className="bg-green-100 text-green-700 px-4 py-2 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-all text-sm font-bold">
                       🛒 کارٹ میں ڈالیں
@@ -631,7 +633,7 @@ function BillItems({ onItemAdded, onClose }) {
           </div>
         </div>
 
-        {/* RIGHT COLUMN */}
+        {/* RIGHT COLUMN - Cart */}
         <div className="lg:w-2/3 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
           <div className="p-5 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -695,44 +697,50 @@ function BillItems({ onItemAdded, onClose }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {(search ? filteredItems : cartItems).map((item) => (
-                    <tr key={item.cart_item_id} className="border-b hover:bg-blue-50/30 transition-colors">
-                      <td className="p-4 font-bold text-gray-800 text-right">{item.item_name} ({item.requested_unit})</td>
-                      <td className="p-2 text-center">
-                        <div className="flex items-center justify-center gap-2">
+                  {(search ? filteredItems : cartItems).map((item) => {
+                    // Calculate price per requested unit
+                    const pricePerUnit = (item.total_amount / item.quantity).toFixed(2);
+                    return (
+                      <tr key={item.cart_item_id} className="border-b hover:bg-blue-50/30 transition-colors">
+                        <td className="p-4 font-bold text-gray-800 text-right">{item.item_name}</td>
+                        <td className="p-2 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleDecrement(item)}
+                              disabled={loading}
+                              className="w-9 h-9 rounded-full bg-red-100 text-red-600 font-bold text-xl hover:bg-red-600 hover:text-white transition-all transform hover:scale-105 shadow-sm disabled:opacity-50"
+                            >
+                              -
+                            </button>
+                            <span className="font-mono font-bold text-lg w-14 text-center bg-gray-50 rounded-lg py-1">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => handleIncrement(item)}
+                              disabled={loading}
+                              className="w-9 h-9 rounded-full bg-green-100 text-green-600 font-bold text-xl hover:bg-green-600 hover:text-white transition-all transform hover:scale-105 shadow-sm disabled:opacity-50"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td className="p-4 text-center text-gray-600 font-medium">{item.requested_unit}</td>
+                        <td className="p-4 text-center font-mono text-blue-700 font-bold">
+                          Rs. {parseFloat(pricePerUnit).toLocaleString()}
+                        </td>
+                        <td className="p-4 text-center font-bold text-green-700">Rs. {item.total_amount?.toLocaleString() || 0}</td>
+                        <td className="p-4 text-center">
                           <button
-                            onClick={() => handleDecrement(item)}
+                            onClick={() => handleRemoveFromCart(item)}
                             disabled={loading}
-                            className="w-9 h-9 rounded-full bg-red-100 text-red-600 font-bold text-xl hover:bg-red-600 hover:text-white transition-all transform hover:scale-105 shadow-sm disabled:opacity-50"
+                            className="text-red-600 hover:text-white font-bold text-sm transition-all hover:bg-red-600 px-3 py-1.5 rounded-lg bg-red-50 hover:shadow-md disabled:opacity-50"
                           >
-                            -
+                            🗑️ حذف
                           </button>
-                          <span className="font-mono font-bold text-lg w-14 text-center bg-gray-50 rounded-lg py-1">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => handleIncrement(item)}
-                            disabled={loading}
-                            className="w-9 h-9 rounded-full bg-green-100 text-green-600 font-bold text-xl hover:bg-green-600 hover:text-white transition-all transform hover:scale-105 shadow-sm disabled:opacity-50"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
-                      <td className="p-4 text-center text-gray-600 font-medium">{item.requested_unit}</td>
-                      <td className="p-4 text-center font-mono text-blue-700 font-bold">Rs. {item.unit_price?.toLocaleString() || 0}</td>
-                      <td className="p-4 text-center font-bold text-green-700">Rs. {item.total_amount?.toLocaleString() || 0}</td>
-                      <td className="p-4 text-center">
-                        <button
-                          onClick={() => handleRemoveFromCart(item)}
-                          disabled={loading}
-                          className="text-red-600 hover:text-white font-bold text-sm transition-all hover:bg-red-600 px-3 py-1.5 rounded-lg bg-red-50 hover:shadow-md disabled:opacity-50"
-                        >
-                          🗑️ حذف
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot className="bg-gray-50 border-t">
                   <tr>
@@ -759,6 +767,7 @@ function BillItems({ onItemAdded, onClose }) {
               }}
               showMsg={showMsg}
               availableItems={availableItems}
+              cartItems={cartItems}
             />
           </div>
         </div>
@@ -767,8 +776,8 @@ function BillItems({ onItemAdded, onClose }) {
   );
 }
 
-// BillItemForm Component
-function BillItemForm({ onCancel, onSave, showMsg, availableItems }) {
+// BillItemForm Component - FIXED with duplicate check
+function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [] }) {
   const [formData, setFormData] = useState({
     item_name: "",
     quantity: "",
@@ -817,6 +826,17 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems }) {
 
     if (!formData.requested_unit) {
       errs.requested_unit = "اکائی منتخب کریں";
+    }
+
+    // Check for duplicate in cart
+    if (itemExists && formData.requested_unit) {
+      const existingInCart = cartItems.find(
+        cartItem => cartItem.item_name.toLowerCase() === formData.item_name.toLowerCase() &&
+          cartItem.requested_unit === formData.requested_unit
+      );
+      if (existingInCart) {
+        errs.requested_unit = `⚠️ ${formData.item_name} (${formData.requested_unit}) پہلے سے کارٹ میں موجود ہے`;
+      }
     }
 
     setErrors(errs);
@@ -872,7 +892,7 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems }) {
           </datalist>
           {itemExists === true && !errors.item_name && matchingItem && (
             <p className="text-green-600 text-sm mt-1 text-right">
-              ✓ یہ آئٹم موجود ہے (اکائی: {matchingItem.item_unit}, قیمت: Rs. {matchingItem.unit_price})
+              ✓ یہ آئٹم موجود ہے (اکائی: {matchingItem.item_unit}, قیمت فی {matchingItem.item_unit}: Rs. {matchingItem.unit_price})
             </p>
           )}
           {errors.item_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_name}</p>}
