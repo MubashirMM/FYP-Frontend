@@ -366,7 +366,7 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -464,9 +464,6 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
               }`}
             value={formData.item_name}
             onChange={e => setFormData({ ...formData, item_name: e.target.value })}
-            onClick={() => setIsDropdownOpen(true)}
-            onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
-            size={isDropdownOpen ? Math.min(5, availableItems.length + 1) : 1}
           >
             <option value="" disabled>-- آئٹم منتخب کریں --</option>
             {availableItems.map(item => (
