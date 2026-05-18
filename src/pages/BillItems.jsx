@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -20,7 +20,6 @@ function BillItems({ onItemAdded, onClose }) {
   const [showBillPreview, setShowBillPreview] = useState(null);
   const [shopInfo, setShopInfo] = useState({ shop_name: "360 آسان اسٹور", owner_name: "", address: "" });
   const [user, setUser] = useState(null);
-  const [autoFillFormData, setAutoFillFormData] = useState(null);
 
   const [availableItems, setAvailableItems] = useState([]);
   const [filteredAvailableItems, setFilteredAvailableItems] = useState([]);
@@ -31,23 +30,28 @@ function BillItems({ onItemAdded, onClose }) {
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
   });
 
-  const fetchUser = async () => {
+  const showMsg = useCallback((text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: "", type: "" }), 3000);
+  }, []);
+
+  const fetchUser = useCallback(async () => {
     try {
       const res = await axios.get(`${API}/auth/me`, getAuthHeader());
       setUser(res.data);
     } catch (err) {
       console.error("Failed to fetch user", err);
     }
-  };
+  }, [API]);
 
-  const fetchShopInfo = async () => {
+  const fetchShopInfo = useCallback(async () => {
     try {
       const res = await axios.get(`${API}/shops/`, getAuthHeader());
       if (res.data?.length > 0) setShopInfo(res.data[0]);
     } catch { }
-  };
+  }, [API]);
 
-  const fetchAvailableItems = async () => {
+  const fetchAvailableItems = useCallback(async () => {
     setItemsLoading(true);
     try {
       const res = await axios.get(`${API}/items`, getAuthHeader());
@@ -60,13 +64,12 @@ function BillItems({ onItemAdded, onClose }) {
     } finally {
       setItemsLoading(false);
     }
-  };
+  }, [API, showMsg]);
 
-  // Fetch cart items - Fix for undefined cart_item_id
-  const fetchCartFromBackend = async () => {
+  // Fetch cart items - FIXED: Handle cart_item_id properly
+  const fetchCartFromBackend = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/cart/items`, getAuthHeader());
-      console.log("Cart response:", response.data);
 
       let itemsArray = [];
       if (response.data && Array.isArray(response.data)) {
@@ -76,16 +79,14 @@ function BillItems({ onItemAdded, onClose }) {
       }
 
       const loadedItems = itemsArray.map(item => ({
-        // TRY DIFFERENT POSSIBLE FIELD NAMES
-        cart_item_id: item.cart_item_id || item.id || item.bill_item_id,
+        cart_item_id: item.cart_item_id || item.billitem_id || item.id,
         item_name: item.item_name,
         quantity: item.quantity,
         requested_unit: item.requested_unit,
         unit_price: item.unit_price || 0,
+        item_unit: item.item_unit,
         total_amount: (item.quantity || 0) * (item.unit_price || 0)
       }));
-
-      console.log("Loaded items with IDs:", loadedItems); // Debug log
 
       setCartItems(loadedItems);
       setFilteredItems(loadedItems);
@@ -94,32 +95,57 @@ function BillItems({ onItemAdded, onClose }) {
       setCartItems([]);
       setFilteredItems([]);
     }
-  };
+  }, [API]);
 
-  const showMsg = (text, type) => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage({ text: "", type: "" }), 3000);
-  };
+  // FIXED: Add to cart - Check by name AND unit
+  const handleAddToCart = useCallback(async (item, customUnit = null, customQuantity = 1) => {
+    setLoading(true);
+    try {
+      const requestedUnit = customUnit || item.item_unit;
+      const quantity = customQuantity;
 
-  // ============ CART OPERATIONS ============
+      // Check if item with SAME name AND SAME unit already exists in cart
+      const existingItem = cartItems.find(
+        cartItem => cartItem.item_name.toLowerCase() === item.item_name.toLowerCase() &&
+          cartItem.requested_unit === requestedUnit
+      );
 
-  // Replace the handleIncrement function with this:
-  const handleIncrement = async (item) => {
+      if (existingItem) {
+        showMsg(`⚠️ ${item.item_name} (${requestedUnit}) پہلے سے کارٹ میں موجود ہے`, "error");
+        return;
+      }
+
+      await axios.post(`${API}/cart/add`, null, {
+        params: {
+          item_name: item.item_name,
+          quantity: quantity,
+          requested_unit: requestedUnit
+        },
+        ...getAuthHeader()
+      });
+      showMsg(`✅ ${item.item_name} (${requestedUnit}) کارٹ میں شامل کر دیا گیا`, "success");
+
+      await fetchCartFromBackend();
+      if (onItemAdded) onItemAdded();
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+      showMsg(err.response?.data?.detail || "کارٹ میں شامل کرنے میں خرابی", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [cartItems, API, showMsg, fetchCartFromBackend, onItemAdded]);
+
+  // FIXED: Increment quantity
+  const handleIncrement = useCallback(async (item) => {
+    if (!item.cart_item_id) {
+      showMsg(`❌ ${item.item_name} کی ID نہیں مل سکی`, "error");
+      return;
+    }
+
     setLoading(true);
     try {
       const newQuantity = item.quantity + 1;
 
-      // First, get the item details from availableItems to get correct unit_price
-      const itemDetails = availableItems.find(
-        i => i.item_name.toLowerCase() === item.item_name.toLowerCase()
-      );
-
-      if (!itemDetails) {
-        showMsg(`❌ ${item.item_name} کی معلومات نہیں مل سکی`, "error");
-        return;
-      }
-
-      // Update the cart item with new quantity
       await axios.put(`${API}/cart/item/${item.cart_item_id}`, {
         quantity: newQuantity,
         requested_unit: item.requested_unit
@@ -133,20 +159,23 @@ function BillItems({ onItemAdded, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API, showMsg, fetchCartFromBackend]);
 
-  // Replace the handleDecrement function with this:
-  const handleDecrement = async (item) => {
+  // FIXED: Decrement quantity
+  const handleDecrement = useCallback(async (item) => {
+    if (!item.cart_item_id) {
+      showMsg(`❌ ${item.item_name} کی ID نہیں مل سکی`, "error");
+      return;
+    }
+
     setLoading(true);
     try {
       if (item.quantity <= 1) {
-        // Delete the item
         await axios.delete(`${API}/cart/item/${item.cart_item_id}`, getAuthHeader());
         showMsg(`✅ ${item.item_name} کارٹ سے حذف کر دیا گیا`, "success");
       } else {
         const newQuantity = item.quantity - 1;
 
-        // Update the cart item with new quantity
         await axios.put(`${API}/cart/item/${item.cart_item_id}`, {
           quantity: newQuantity,
           requested_unit: item.requested_unit
@@ -162,10 +191,15 @@ function BillItems({ onItemAdded, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API, showMsg, fetchCartFromBackend]);
 
-  // Replace the handleRemoveFromCart function with this:
-  const handleRemoveFromCart = async (item) => {
+  // FIXED: Remove from cart
+  const handleRemoveFromCart = useCallback(async (item) => {
+    if (!item.cart_item_id) {
+      showMsg(`❌ ${item.item_name} کی ID نہیں مل سکی`, "error");
+      return;
+    }
+
     setLoading(true);
     try {
       await axios.delete(`${API}/cart/item/${item.cart_item_id}`, getAuthHeader());
@@ -177,83 +211,45 @@ function BillItems({ onItemAdded, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API, showMsg, fetchCartFromBackend]);
 
-  // Replace the handleAddToCart function to check if item already exists:
-  const handleAddToCart = async (item) => {
-    setLoading(true);
-    try {
-      // Check if item already exists in cart
-      const existingItem = cartItems.find(
-        cartItem => cartItem.item_name.toLowerCase() === item.item_name.toLowerCase()
-      );
-
-      if (existingItem) {
-        showMsg(`⚠️ ${item.item_name} پہلے سے کارٹ میں موجود ہے (موجودہ مقدار: ${existingItem.quantity})`, "error");
-        return;
-      }
-
-      // New item - add directly
-      await axios.post(`${API}/cart/add`, null, {
-        params: {
-          item_name: item.item_name,
-          quantity: 1,
-          requested_unit: item.item_unit || "عدد"
-        },
-        ...getAuthHeader()
-      });
-      showMsg(`✅ ${item.item_name} کارٹ میں شامل کر دیا گیا`, "success");
-
-      await fetchCartFromBackend();
-      if (onItemAdded) onItemAdded();
-    } catch (err) {
-      console.error("Failed to add to cart:", err);
-      showMsg(err.response?.data?.detail || "کارٹ میں شامل کرنے میں خرابی", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Replace the addCustomItemToCart function:
-  const addCustomItemToCart = async (formData) => {
+  // FIXED: Add custom item with unit check
+  const addCustomItemToCart = useCallback(async (formData) => {
     const finalUnit = formData.requested_unit;
+    const itemName = formData.item_name;
+    const quantity = Number(formData.quantity);
 
     const existingItemInDB = availableItems.find(
-      item => item.item_name.toLowerCase() === formData.item_name.toLowerCase()
+      item => item.item_name.toLowerCase() === itemName.toLowerCase()
     );
 
     if (!existingItemInDB) {
-      showMsg(`❌ "${formData.item_name}" موجود نہیں ہے`, "error");
+      showMsg(`❌ "${itemName}" موجود نہیں ہے`, "error");
       return;
     }
 
-    if (existingItemInDB.item_unit !== finalUnit) {
-      showMsg(`❌ "${formData.item_name}" کی اکائی "${existingItemInDB.item_unit}" ہے`, "error");
+    // Check if item with same name AND unit exists in cart
+    const existingInCart = cartItems.find(
+      cartItem => cartItem.item_name.toLowerCase() === itemName.toLowerCase() &&
+        cartItem.requested_unit === finalUnit
+    );
+
+    if (existingInCart) {
+      showMsg(`⚠️ ${itemName} (${finalUnit}) پہلے سے کارٹ میں موجود ہے`, "error");
       return;
     }
 
     setLoading(true);
     try {
-      // Check if item already exists in cart
-      const existingItem = cartItems.find(
-        cartItem => cartItem.item_name.toLowerCase() === formData.item_name.toLowerCase()
-      );
-
-      if (existingItem) {
-        showMsg(`⚠️ ${formData.item_name} پہلے سے کارٹ میں موجود ہے (موجودہ مقدار: ${existingItem.quantity})`, "error");
-        return;
-      }
-
-      // New item - add directly
       await axios.post(`${API}/cart/add`, null, {
         params: {
-          item_name: formData.item_name,
-          quantity: Number(formData.quantity),
+          item_name: itemName,
+          quantity: quantity,
           requested_unit: finalUnit
         },
         ...getAuthHeader()
       });
-      showMsg(`✅ ${formData.item_name} کارٹ میں شامل کر دیا گیا`, "success");
+      showMsg(`✅ ${itemName} (${finalUnit}) کارٹ میں شامل کر دیا گیا`, "success");
 
       await fetchCartFromBackend();
       if (onItemAdded) onItemAdded();
@@ -263,9 +259,9 @@ function BillItems({ onItemAdded, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
-  // Clear entire cart
-  const handleClearCart = async () => {
+  }, [availableItems, cartItems, API, showMsg, fetchCartFromBackend, onItemAdded]);
+
+  const handleClearCart = useCallback(async () => {
     if (cartItems.length === 0) {
       showMsg("کارٹ پہلے سے خالی ہے", "error");
       return;
@@ -283,10 +279,9 @@ function BillItems({ onItemAdded, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cartItems.length, API, showMsg, fetchCartFromBackend, onItemAdded]);
 
-  // Generate bill
-  const handleGenerateBill = async () => {
+  const handleGenerateBill = useCallback(async () => {
     if (cartItems.length === 0) {
       showMsg("❌ کارٹ خالی ہے - پہلے آئٹمز شامل کریں", "error");
       return;
@@ -337,10 +332,9 @@ function BillItems({ onItemAdded, onClose }) {
     } finally {
       setGeneratingBill(false);
     }
-  };
+  }, [cartItems, API, showMsg, onItemAdded]);
 
-  // Print bill
-  const handlePrintBill = (billData) => {
+  const handlePrintBill = useCallback((billData) => {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
     iframe.style.width = '0';
@@ -446,7 +440,7 @@ function BillItems({ onItemAdded, onClose }) {
 
     iframeWindow.onafterprint = cleanup;
     setTimeout(cleanup, 30000);
-  };
+  }, [shopInfo, user]);
 
   const handleSearchChange = (e) => {
     const searchTerm = e.target.value;
@@ -475,25 +469,23 @@ function BillItems({ onItemAdded, onClose }) {
   };
 
   const handleAddNew = () => {
-    setAutoFillFormData(null);
     setShowForm(true);
   };
 
-  const handleFormClose = (shouldRefresh = false) => {
+  const handleFormClose = useCallback((shouldRefresh = false) => {
     setShowForm(false);
-    setAutoFillFormData(null);
     if (shouldRefresh) {
       fetchCartFromBackend();
       if (onItemAdded) onItemAdded();
     }
-  };
+  }, [fetchCartFromBackend, onItemAdded]);
 
   useEffect(() => {
     fetchShopInfo();
     fetchUser();
     fetchAvailableItems();
     fetchCartFromBackend();
-  }, []);
+  }, [fetchShopInfo, fetchUser, fetchAvailableItems, fetchCartFromBackend]);
 
   const totalCartAmount = cartItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
   const totalCartItems = cartItems.length;
@@ -543,7 +535,7 @@ function BillItems({ onItemAdded, onClose }) {
                   </thead>
                   <tbody>
                     {showBillPreview.items?.map((item, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
+                      <tr key={`${item.item_name}-${idx}`} className="border-b hover:bg-gray-50">
                         <td className="p-3 border text-right">{item.item_name}</td>
                         <td className="p-3 border text-center">{item.quantity}</td>
                         <td className="p-3 border text-center">{item.requested_unit}</td>
@@ -574,9 +566,9 @@ function BillItems({ onItemAdded, onClose }) {
         </div>
       )}
 
-      {/* Main Layout: 2 Columns */}
+      {/* Main Layout */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* LEFT COLUMN: Add Items Section */}
+        {/* LEFT COLUMN */}
         <div className="lg:w-1/3 bg-white rounded-2xl shadow-xl overflow-hidden h-fit border border-gray-100">
           <div className="p-5 border-b bg-gradient-to-r from-green-50 to-emerald-50">
             <h2 className="text-xl font-bold text-gray-800 font-urdu flex items-center gap-2">
@@ -639,7 +631,7 @@ function BillItems({ onItemAdded, onClose }) {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Cart Section */}
+        {/* RIGHT COLUMN */}
         <div className="lg:w-2/3 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
           <div className="p-5 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -705,7 +697,7 @@ function BillItems({ onItemAdded, onClose }) {
                 <tbody>
                   {(search ? filteredItems : cartItems).map((item) => (
                     <tr key={item.cart_item_id} className="border-b hover:bg-blue-50/30 transition-colors">
-                      <td className="p-4 font-bold text-gray-800 text-right">{item.item_name}</td>
+                      <td className="p-4 font-bold text-gray-800 text-right">{item.item_name} ({item.requested_unit})</td>
                       <td className="p-2 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
@@ -727,7 +719,7 @@ function BillItems({ onItemAdded, onClose }) {
                           </button>
                         </div>
                       </td>
-                      <td className="p-4 text-center text-gray-600 font-medium">{item.requested_unit} </td>
+                      <td className="p-4 text-center text-gray-600 font-medium">{item.requested_unit}</td>
                       <td className="p-4 text-center font-mono text-blue-700 font-bold">Rs. {item.unit_price?.toLocaleString() || 0}</td>
                       <td className="p-4 text-center font-bold text-green-700">Rs. {item.total_amount?.toLocaleString() || 0}</td>
                       <td className="p-4 text-center">
@@ -760,7 +752,6 @@ function BillItems({ onItemAdded, onClose }) {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex justify-center items-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
             <BillItemForm
-              initialData={autoFillFormData}
               onCancel={() => handleFormClose(false)}
               onSave={(formData) => {
                 addCustomItemToCart(formData);
@@ -777,12 +768,11 @@ function BillItems({ onItemAdded, onClose }) {
 }
 
 // BillItemForm Component
-function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }) {
+function BillItemForm({ onCancel, onSave, showMsg, availableItems }) {
   const [formData, setFormData] = useState({
     item_name: "",
     quantity: "",
     requested_unit: "",
-    custom_unit: ""
   });
 
   const [errors, setErrors] = useState({});
@@ -802,7 +792,6 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
         setFormData(prev => ({
           ...prev,
           requested_unit: foundItem.item_unit,
-          custom_unit: ""
         }));
       }
     } else {
@@ -810,17 +799,6 @@ function BillItemForm({ initialData, onCancel, onSave, showMsg, availableItems }
       setMatchingItem(null);
     }
   }, [formData.item_name, availableItems]);
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        item_name: initialData.item_name || "",
-        quantity: initialData.quantity || "",
-        requested_unit: initialData.requested_unit || "",
-        custom_unit: initialData.custom_unit || ""
-      });
-    }
-  }, [initialData]);
 
   const validateForm = () => {
     let errs = {};
