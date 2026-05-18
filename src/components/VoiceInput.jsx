@@ -9,7 +9,7 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  
+
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
@@ -25,14 +25,8 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
         return "/voice-process-udhar-items";
       case "bills":
         return "/voice-process-bills";
-      case "sales":
-        return "/voice-process-sales";
       case "udhaar":
         return "/voice-process-udhaar";
-      case "cart":
-        return "/voice-process-cart";
-      case "reports":
-        return "/voice-process-reports";
       default:
         return "/voice-process-items";
     }
@@ -40,7 +34,7 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
 
   // Get feature title
   const getFeatureTitle = () => {
-    switch(feature) {
+    switch (feature) {
       case "items": return "📦 آئٹمز کمانڈ";
       case "udhaar": return "💰 ادھار کمانڈ";
       case "bills": return "🧾 بل کمانڈ";
@@ -53,19 +47,13 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
 
   // Get example text based on feature
   const getExampleText = () => {
-    switch(feature) {
+    switch (feature) {
       case "items":
         return "مثالیں: \"10 کلو چاول ڈال دو\" | \"چاول حذف کرو\" | \"چاول تلاش کرو\"";
       case "udhaar":
         return "مثالیں: \"علی کے کھاتے میں 20 کلو چاول ڈال دو\" | \"علی کا چاول حذف کرو\" | \"علی کا ادھار تلاش کرو\"";
       case "bills":
         return "مثالیں: \"علی کا بل بنا دو\" | \"علی کا بل ادا کرو\" | \"علی کا بل پرنٹ کرو\" | \"علی کا بل دیکھو\"";
-      case "sales":
-        return "مثالیں: \"آج کی سیلز بتاؤ\" | \"کل کی فروخت کتنی تھی\"";
-      case "cart":
-        return "مثالیں: \"کارٹ میں 2 کلو چاول ڈال دو\" | \"کارٹ دکھاؤ\" | \"کارٹ خالی کرو\"";
-      case "reports":
-        return "مثالیں: \"ماہانہ رپورٹ دکھاؤ\" | \"سالانہ سیلز رپورٹ\" | \"سب سے زیادہ فروخت ہونے والی اشیاء\"";
       default:
         return "اپنی آواز سے کمانڈ کریں";
     }
@@ -95,7 +83,7 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
     try {
       setError("");
       setMessage("");
-      
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -109,7 +97,7 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
       mediaRecorderRef.current.onstop = async () => {
         try {
           const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-          
+
           if (blob.size < 5000) {
             setError("❌ کوئی آواز ریکارڈ نہیں ہوئی۔ براہ کرم دوبارہ بولیں");
             setIsRecording(false);
@@ -118,14 +106,14 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
             }
             return;
           }
-          
+
           const wavBlob = await convertToWav(blob);
           const url = URL.createObjectURL(wavBlob);
           setAudioUrl(url);
           setAudioSample(wavBlob);
           setMessage("✅ آواز ریکارڈ ہو گئی");
           setIsRecording(false);
-          
+
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
           }
@@ -186,43 +174,43 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
       setError("براہ کرم پہلے آواز ریکارڈ کریں یا فائل اپ لوڈ کریں");
       return;
     }
-    
+
     setIsProcessing(true);
     setError("");
     setMessage("");
-    
+
     try {
       const audio_base64 = await blobToBase64(audioSample);
       setMessage("🎤 آواز پروسیس ہو رہی ہے...");
-      
+
       const endpoint = getApiEndpoint();
       const response = await axios.post(endpoint, {
         audio_base64: audio_base64
       });
-      
+
       console.log("Response:", response.data);
-      
+
       if (response.data && response.data.action === 0) {
         setError(`❌ ${response.data.message || "یہ کمانڈ یہاں پروسیس نہیں کی جا سکتی۔ براہ کرم صرف متعلقہ کمانڈ دیں۔"}`);
         setMessage("");
         setIsProcessing(false);
         return;
       }
-      
+
       if (response.data && response.data.error) {
         setError(`❌ ${response.data.error}`);
         setMessage("");
         setIsProcessing(false);
         return;
       }
-      
+
       if (response.data) {
         setMessage("✅ کمانڈ کامیابی سے پروسیس ہو گئی!");
-        
+
         if (onCommandReceived) {
           onCommandReceived(response.data);
         }
-        
+
         setTimeout(() => {
           clearAll();
           setIsOpen(false);
@@ -234,7 +222,7 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
       }
     } catch (err) {
       console.error(err);
-      
+
       if (err.response?.status === 401) {
         setError("❌ آپ لاگ ان نہیں ہیں۔ براہ کرم پہلے لاگ ان کریں");
       } else if (err.response?.data?.detail) {
@@ -275,13 +263,13 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
     const audioContext = new AudioContext({ sampleRate: 16000 });
     const arrayBuffer = await input.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    
+
     const numberOfChannels = 1;
     const sampleRate = 16000;
     const length = audioBuffer.length;
-    
+
     const newBuffer = audioContext.createBuffer(numberOfChannels, length, sampleRate);
-    
+
     if (audioBuffer.numberOfChannels === 1) {
       newBuffer.copyToChannel(audioBuffer.getChannelData(0), 0);
     } else {
@@ -293,7 +281,7 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
       }
       newBuffer.copyToChannel(mono, 0);
     }
-    
+
     const wavBuffer = encodeWAV(newBuffer);
     return new Blob([wavBuffer], { type: "audio/wav" });
   }
@@ -338,11 +326,10 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 left-0 z-50 bg-purple-600 hover:bg-purple-700 text-white transition-all duration-300 shadow-lg flex items-center gap-2 ${
-          isOpen 
-            ? "translate-x-0 rounded-r-full py-3 px-4" 
-            : "translate-x-0 rounded-r-full py-3 px-4 hover:pr-6"
-        }`}
+        className={`fixed bottom-6 left-0 z-50 bg-purple-600 hover:bg-purple-700 text-white transition-all duration-300 shadow-lg flex items-center gap-2 ${isOpen
+          ? "translate-x-0 rounded-r-full py-3 px-4"
+          : "translate-x-0 rounded-r-full py-3 px-4 hover:pr-6"
+          }`}
         style={{ left: 0, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
       >
         {isOpen ? (
@@ -362,9 +349,8 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
       </button>
 
       <div
-        className={`fixed bottom-20 left-0 z-40 bg-white rounded-r-2xl shadow-2xl transition-all duration-300 overflow-hidden ${
-          isOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
-        }`}
+        className={`fixed bottom-20 left-0 z-40 bg-white rounded-r-2xl shadow-2xl transition-all duration-300 overflow-hidden ${isOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
+          }`}
         style={{ width: "400px", maxWidth: "85vw" }}
       >
         <div className="p-4">
@@ -377,13 +363,12 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
             <button
               onClick={toggleRecording}
               disabled={isProcessing}
-              className={`flex-shrink-0 w-12 h-12 rounded-full transition-all ${
-                isRecording
-                  ? "bg-red-500 animate-pulse"
-                  : audioSample
+              className={`flex-shrink-0 w-12 h-12 rounded-full transition-all ${isRecording
+                ? "bg-red-500 animate-pulse"
+                : audioSample
                   ? "bg-green-500"
                   : "bg-purple-500"
-              }`}
+                }`}
             >
               {isRecording ? (
                 <div className="flex justify-center gap-1">
@@ -401,14 +386,14 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
                 </svg>
               )}
             </button>
-            
+
             <div className="flex-1 text-right">
               <p className="text-xs text-gray-500 font-urdu">
-                {isRecording 
-                  ? "🔴 ریکارڈنگ جاری ہے..." 
-                  : audioSample 
-                  ? "✅ آواز ریکارڈ ہو چکی ہے" 
-                  : "ریکارڈ کرنے کے لیے دبائیں"}
+                {isRecording
+                  ? "🔴 ریکارڈنگ جاری ہے..."
+                  : audioSample
+                    ? "✅ آواز ریکارڈ ہو چکی ہے"
+                    : "ریکارڈ کرنے کے لیے دبائیں"}
               </p>
             </div>
 
@@ -439,11 +424,10 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
             <button
               onClick={processVoiceToCommand}
               disabled={isProcessing}
-              className={`w-full py-2 rounded-lg mb-3 text-sm font-urdu transition-all ${
-                isProcessing 
-                  ? "bg-gray-400 cursor-not-allowed" 
-                  : "bg-purple-600 hover:bg-purple-700 text-white"
-              }`}
+              className={`w-full py-2 rounded-lg mb-3 text-sm font-urdu transition-all ${isProcessing
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-purple-600 hover:bg-purple-700 text-white"
+                }`}
             >
               {isProcessing ? (
                 <div className="flex items-center justify-center gap-2">
@@ -471,7 +455,7 @@ function VoiceInput({ onCommandReceived, onClose, feature = "items" }) {
               {message}
             </div>
           )}
-          
+
           {error && (
             <div className="mt-3 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-right text-xs font-urdu">
               {error}

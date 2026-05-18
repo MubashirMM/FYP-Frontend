@@ -252,7 +252,7 @@ function UdhaarItems({ onItemAdded, onClose }) {
                       <td className="p-4 border-l font-bold text-gray-800 text-right font-urdu">{item.customer_name}</td>
                       <td className="p-4 border-l text-gray-600 text-right font-urdu">{item.item_name}</td>
                       <td className="p-4 border-l text-center font-urdu">
-                        <span className="font-bold">{item.base_unit_quantity || item.quantity}</span>
+                        {/* <span className="font-bold">{item.base_unit_quantity || item.quantity}</span> */}
                         <span className="text-gray-600 mr-1">{item.base_unit || "عدد"}</span>
                       </td>
                       <td className="p-4 border-l text-center text-gray-600 font-urdu">
