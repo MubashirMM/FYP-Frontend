@@ -5,6 +5,13 @@ import { UdhaarVoiceService } from "../services/UdhaarVoiceService";
 
 const API = import.meta.env.VITE_API_URL;
 
+// Helper function to escape HTML to prevent XSS
+const escapeHtml = (text) => {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
 function Udhaars({ onItemAdded, onClose }) {
   const [udhars, setUdhars] = useState([]);
   const [filteredUdhars, setFilteredUdhars] = useState([]);
@@ -302,84 +309,220 @@ function Udhaars({ onItemAdded, onClose }) {
     return { day: "", month: "", year: "" };
   };
 
+  // Print Udhar - Fixed version without UI freeze
   const printUdhar = (udhar) => {
     const dateParts = extractDateParts(udhar.created_date_urdu);
     const paidDateParts = udhar.paid_date_urdu ? extractDateParts(udhar.paid_date_urdu) : { day: "", month: "", year: "" };
     const dayName = extractDayName(udhar.created_date_urdu);
     const paidDayName = udhar.paid_date_urdu ? extractDayName(udhar.paid_date_urdu) : "";
 
-    const printWindow = window.open("", "_blank");
-    printWindow.document.write(`
-      <html dir="rtl"><head><title>اُدھار بل - ${udhar.customer_name}</title>
+    // Create a hidden iframe instead of window.open
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const iframeWindow = iframe.contentWindow;
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+
+    // Write content to iframe
+    iframeDocument.open();
+    iframeDocument.write(`
+    <!DOCTYPE html>
+    <html dir="rtl">
+    <head>
+      <title>اُدھار بل - ${escapeHtml(udhar.customer_name)}</title>
+      <meta charset="UTF-8">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-          font-family: 'Arial', 'Tahoma', sans-serif;
-          padding: 40px;
+          font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          padding: 20px;
           line-height: 1.6;
           background: #fff;
           color: #333;
         }
-        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #ddd; padding-bottom: 20px; }
-        .shop-name { font-size: 28px; font-weight: bold; color: #d97706; margin-bottom: 10px; }
-        .shop-address { color: #666; font-size: 14px; }
-        .bill-info { display: flex; justify-content: space-between; margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 12px; flex-wrap: wrap; gap: 15px; }
-        .info-group { text-align: center; flex: 1; }
-        .info-label { font-size: 12px; color: #666; margin-bottom: 5px; }
-        .info-value { font-size: 16px; font-weight: bold; color: #333; }
-        .amount-box { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 30px; border-radius: 20px; text-align: center; margin: 30px 0; }
-        .amount-label { font-size: 14px; opacity: 0.9; margin-bottom: 10px; }
-        .amount-value { font-size: 48px; font-weight: bold; }
-        .details-table { width: 100%; margin: 30px 0; border-collapse: collapse; }
-        .details-table td { padding: 12px; border-bottom: 1px solid #eee; }
-        .details-table td:first-child { font-weight: bold; color: #666; }
-        .details-table td:last-child { text-align: left; font-weight: bold; }
-        .status { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; }
-        .status-paid { background: #d1fae5; color: #065f46; }
-        .status-unpaid { background: #fee2e2; color: #991b1b; }
-        .footer { text-align: center; margin-top: 60px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 12px; }
-        @media print { body { padding: 20px; } }
+        .header { 
+          text-align: center; 
+          margin-bottom: 30px; 
+          border-bottom: 2px solid #ddd; 
+          padding-bottom: 20px;
+        }
+        .shop-name { 
+          font-size: 24px; 
+          font-weight: bold; 
+          color: #d97706; 
+          margin-bottom: 8px;
+        }
+        .shop-address { 
+          color: #666; 
+          font-size: 12px;
+        }
+        .bill-info { 
+          display: flex; 
+          justify-content: space-between; 
+          margin: 20px 0; 
+          padding: 15px; 
+          background: #f9f9f9; 
+          border-radius: 8px; 
+          flex-wrap: wrap; 
+          gap: 10px;
+        }
+        .info-group { 
+          text-align: center; 
+          flex: 1;
+        }
+        .info-label { 
+          font-size: 11px; 
+          color: #666; 
+          margin-bottom: 3px;
+        }
+        .info-value { 
+          font-size: 14px; 
+          font-weight: bold; 
+          color: #333;
+        }
+        .amount-box { 
+          background: linear-gradient(135deg, #f59e0b, #d97706); 
+          color: white; 
+          padding: 20px; 
+          border-radius: 12px; 
+          text-align: center; 
+          margin: 20px 0;
+        }
+        .amount-label { 
+          font-size: 14px; 
+          opacity: 0.9; 
+          margin-bottom: 8px;
+        }
+        .amount-value { 
+          font-size: 32px; 
+          font-weight: bold;
+        }
+        .details-table { 
+          width: 100%; 
+          margin: 20px 0; 
+          border-collapse: collapse;
+        }
+        .details-table td { 
+          padding: 10px; 
+          border-bottom: 1px solid #eee;
+        }
+        .details-table td:first-child { 
+          font-weight: bold; 
+          color: #666;
+        }
+        .details-table td:last-child { 
+          text-align: left; 
+          font-weight: bold;
+        }
+        .status { 
+          display: inline-block; 
+          padding: 4px 12px; 
+          border-radius: 20px; 
+          font-size: 12px; 
+          font-weight: bold;
+        }
+        .status-paid { 
+          background: #d1fae5; 
+          color: #065f46;
+        }
+        .status-unpaid { 
+          background: #fee2e2; 
+          color: #991b1b;
+        }
+        .footer { 
+          text-align: center; 
+          margin-top: 40px; 
+          padding-top: 15px; 
+          border-top: 1px solid #ddd; 
+          color: #999; 
+          font-size: 11px;
+        }
+        @media print {
+          body { padding: 0; margin: 0; }
+          .no-print { display: none; }
+        }
       </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="shop-name">${shopInfo.shop_name || "360 آسان اسٹور"}</div>
-          <div class="shop-address">${shopInfo.address || ""}</div>
-          <div class="shop-address">مالک: ${shopInfo.owner_name || user?.username || ""}</div>
-        </div>
+    </head>
+    <body>
+      <div class="header">
+        <div class="shop-name">${escapeHtml(shopInfo.shop_name) || "360 آسان اسٹور"}</div>
+        <div class="shop-address">${escapeHtml(shopInfo.address) || ""}</div>
+        <div class="shop-address">مالک: ${escapeHtml(shopInfo.owner_name) || escapeHtml(user?.username) || ""}</div>
+      </div>
 
-        <div class="bill-info">
-          <div class="info-group"><div class="info-label">اُدھار نمبر</div><div class="info-value">#${udhar.udhar_id}</div></div>
-          <div class="info-group"><div class="info-label">کسٹمر</div><div class="info-value">${udhar.customer_name}</div></div>
-          <div class="info-group"><div class="info-label">تاریخ تخلیق</div><div class="info-value">${dayName}، ${dateParts.day} ${dateParts.month} ${dateParts.year}</div></div>
-          <div class="info-group"><div class="info-label">وقت</div><div class="info-value">${udhar.udhar_time || udhar.created_time || "—"}</div></div>
-        </div>
+      <div class="bill-info">
+        <div class="info-group"><div class="info-label">اُدھار نمبر</div><div class="info-value">#${udhar.udhar_id}</div></div>
+        <div class="info-group"><div class="info-label">کسٹمر</div><div class="info-value">${escapeHtml(udhar.customer_name)}</div></div>
+        <div class="info-group"><div class="info-label">تاریخ تخلیق</div><div class="info-value">${escapeHtml(dayName)}، ${dateParts.day} ${escapeHtml(dateParts.month)} ${dateParts.year}</div></div>
+        <div class="info-group"><div class="info-label">وقت</div><div class="info-value">${udhar.udhar_time || udhar.created_time || "—"}</div></div>
+      </div>
 
-        ${udhar.status === "paid" ? `
-        <div class="bill-info" style="background: #d1fae5;">
-          <div class="info-group"><div class="info-label">ادا شدہ تاریخ</div><div class="info-value">${paidDayName}، ${paidDateParts.day} ${paidDateParts.month} ${paidDateParts.year}</div></div>
-          <div class="info-group"><div class="info-label">ادا شدہ وقت</div><div class="info-value">${udhar.paid_time || "—"}</div></div>
-        </div>
-        ` : ''}
+      ${udhar.status === "paid" ? `
+      <div class="bill-info" style="background: #d1fae5;">
+        <div class="info-group"><div class="info-label">ادا شدہ تاریخ</div><div class="info-value">${escapeHtml(paidDayName)}، ${paidDateParts.day} ${escapeHtml(paidDateParts.month)} ${paidDateParts.year}</div></div>
+        <div class="info-group"><div class="info-label">ادا شدہ وقت</div><div class="info-value">${udhar.paid_time || "—"}</div></div>
+      </div>
+      ` : ''}
 
-        <div class="amount-box">
-          <div class="amount-label">کل واجب الادا رقم</div>
-          <div class="amount-value">${udhar.total?.toLocaleString()} روپے</div>
-        </div>
+      <div class="amount-box">
+        <div class="amount-label">کل واجب الادا رقم</div>
+        <div class="amount-value">${udhar.total?.toLocaleString()} روپے</div>
+      </div>
 
-        <table class="details-table">
-          <tr><td style="text-align: right">سب ٹوٹل:</td><td style="text-align: left">${udhar.subtotal?.toLocaleString()} روپے</td></tr>
-          <tr><td style="text-align: right">براہ راست جمع:</td><td style="text-align: left; color: #10b981">+ ${udhar.direct_addition?.toLocaleString()} روپے</td></tr>
-          <tr><td style="text-align: right">براہ راست کٹوتی:</td><td style="text-align: left; color: #ef4444">- ${udhar.direct_deduction?.toLocaleString()} روپے</td></tr>
-          <tr><td style="text-align: right">اسٹیٹس:</td><td style="text-align: left"><span class="status ${udhar.status === 'paid' ? 'status-paid' : 'status-unpaid'}">${udhar.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}</span></td></tr>
-        </table>
+      <table class="details-table">
+        <tr><td style="text-align: right">سب ٹوٹل:</td><td style="text-align: left">${udhar.subtotal?.toLocaleString()} روپے</td></tr>
+        <tr><td style="text-align: right">براہ راست جمع:</td><td style="text-align: left; color: #10b981">+ ${udhar.direct_addition?.toLocaleString()} روپے</td></tr>
+        <tr><td style="text-align: right">براہ راست کٹوتی:</td><td style="text-align: left; color: #ef4444">- ${udhar.direct_deduction?.toLocaleString()} روپے</td></tr>
+        <tr><td style="text-align: right">اسٹیٹس:</td><td style="text-align: left"><span class="status ${udhar.status === 'paid' ? 'status-paid' : 'status-unpaid'}">${udhar.status === "paid" ? "ادا شدہ" : "غیر ادا شدہ"}</span></td></tr>
+       </table>
 
-        <div class="footer">شکریہ! آپ کا اعتبار ہماری ترجیح ہے۔</div>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-    setTimeout(() => printWindow.print(), 500);
+      <div class="footer">
+        شکریہ! آپ کا اعتبار ہماری ترجیح ہے۔
+      </div>
+      <div class="no-print" style="text-align:center; margin-top:20px;">
+        <button onclick="window.print()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#d97706; color:white; border:none; border-radius:8px;">🖨️ پرنٹ کریں</button>
+        <button onclick="window.close()" style="padding:10px 20px; margin:10px; cursor:pointer; background:#ef4444; color:white; border:none; border-radius:8px;">✕ بند کریں</button>
+      </div>
+      <script>
+        // Auto-trigger print after a short delay
+        setTimeout(() => {
+          window.print();
+        }, 500);
+      </script>
+    </body>
+    </html>
+  `);
+    iframeDocument.close();
+
+    // Focus on iframe and trigger print
+    iframeWindow.focus();
+
+    // Clean up iframe after printing is done or closed
+    const cleanup = () => {
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+    };
+
+    // Handle when print dialog closes
+    iframeWindow.onafterprint = cleanup;
+
+    // Fallback cleanup if onafterprint is not supported
+    setTimeout(cleanup, 30000);
+  };
+
+  // Helper function to escape HTML to prevent XSS
+  const escapeHtml = (text) => {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   };
 
   useEffect(() => {
