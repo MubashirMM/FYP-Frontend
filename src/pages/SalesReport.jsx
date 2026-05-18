@@ -379,7 +379,7 @@ function SalesReport({ onClose }) {
     });
   };
 
-  // Print-based PDF generation
+  // Print-based PDF generation - FIXED with iframe (no UI freeze)
   const printPDF = async (report) => {
     setPrintGenerating(true);
     try {
@@ -404,17 +404,41 @@ function SalesReport({ onClose }) {
         lineChart: lineChartImage
       });
 
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
+      // CHANGE: Use iframe instead of window.open
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
 
-      printWindow.onload = () => {
+      const iframeWindow = iframe.contentWindow;
+      const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+
+      iframeDocument.open();
+      iframeDocument.write(htmlContent);
+      iframeDocument.close();
+
+      iframeWindow.focus();
+
+      // Auto print
+      setTimeout(() => {
+        iframeWindow.print();
+        showMsg("✅ رپورٹ پرنٹ کے لیے تیار ہے۔ Save as PDF کا انتخاب کریں", "success");
+        setPrintGenerating(false);
+      }, 500);
+
+      // Cleanup iframe after printing
+      const cleanup = () => {
         setTimeout(() => {
-          printWindow.print();
-          showMsg("✅ رپورٹ پرنٹ کے لیے تیار ہے۔ Save as PDF کا انتخاب کریں", "success");
-          setPrintGenerating(false);
-        }, 500);
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
       };
+
+      iframeWindow.onafterprint = cleanup;
+      setTimeout(cleanup, 30000);
 
     } catch (err) {
       console.error("Print error:", err);
@@ -730,8 +754,8 @@ function SalesReport({ onClose }) {
               onClick={() => setCurrentPage(i + 1)}
               disabled={printGenerating}
               className={`h-8 w-8 rounded-lg border font-bold transition-all text-sm ${currentPage === i + 1
-                  ? "bg-amber-600 text-white border-amber-600"
-                  : "bg-white hover:bg-gray-100"
+                ? "bg-amber-600 text-white border-amber-600"
+                : "bg-white hover:bg-gray-100"
                 } disabled:opacity-50`}
             >
               {i + 1}
