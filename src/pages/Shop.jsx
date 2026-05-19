@@ -83,7 +83,7 @@ function Shop() {
   // Save Shop (Create)
   const saveShop = async (e) => {
     e.preventDefault();
-    
+
     let newErrors = {};
     if (!formData.shop_name || !formData.shop_name.trim()) {
       newErrors.shop_name = "دکان کا نام درج کرنا ضروری ہے۔";
@@ -124,20 +124,20 @@ function Shop() {
         shop_name: updateForm.shop_name,
         address: updateForm.address
       }, getAuthHeader());
-      
+
       setUpdateMessage({ text: "اسٹور کی تفصیلات کامیابی سے اپ ڈیٹ ہو گئیں", type: "success" });
-      
+
       setTimeout(() => {
         setShowUpdateModal(false);
         fetchShop();
         setUpdateMessage({ text: "", type: "" });
         setUpdateErrors({});
       }, 1500);
-      
+
     } catch (err) {
-      setUpdateMessage({ 
-        text: err.response?.data?.detail || "اپ ڈیٹ کرنے میں خرابی", 
-        type: "error" 
+      setUpdateMessage({
+        text: err.response?.data?.detail || "اپ ڈیٹ کرنے میں خرابی",
+        type: "error"
       });
     } finally {
       setUpdateLoading(false);
@@ -157,7 +157,7 @@ function Shop() {
     try {
       await axios.delete(`${API}/shops/${shop.shop_id}`, getAuthHeader());
       setMessage({ text: "اسٹور کامیابی سے حذف ہو گیا", type: "success" });
-      
+
       // Reset everything
       setShop(null);
       setIsEditing(false);
@@ -181,24 +181,23 @@ function Shop() {
     <div className="min-h-screen bg-gray-50 p-4 md:p-8" dir="rtl">
       {/* Toast Notification */}
       {message.text && (
-        <div className={`fixed top-6 left-6 z-[100] px-6 py-3 rounded-2xl shadow-2xl ${
-          message.type === "success" ? "bg-green-600" : "bg-red-600"
-        } text-white`}>
+        <div className={`fixed top-6 left-6 z-[100] px-6 py-3 rounded-2xl shadow-2xl ${message.type === "success" ? "bg-green-600" : "bg-red-600"
+          } text-white`}>
           {message.text}
         </div>
       )}
 
       <div className="max-w-2xl mx-auto">
-        
+
         {/* Shop Card */}
         <div className="bg-transparent">
-          
+
           {/* Shop Info - Only show if shop exists */}
           {isEditing && shop && (
             <div className="space-y-6 mb-8">
-              
+
               {/* Shop Number */}
-              <div className="pb-4">
+              <div className="pb-4 mt-20">
                 <p className="text-gray-500 text-sm mb-1">اسٹور نمبر</p>
                 <p className="text-2xl font-bold text-gray-800">#{shop.shop_id}</p>
                 <hr className="mt-4 border-gray-200" />
@@ -247,9 +246,8 @@ function Shop() {
                     type="text"
                     value={formData.shop_name}
                     onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
-                    className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:border-blue-500 transition-all ${
-                      errors.shop_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
-                    }`}
+                    className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:border-blue-500 transition-all ${errors.shop_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                      }`}
                     placeholder="مثلاً: احمد جنرل اسٹور"
                   />
                   {errors.shop_name && <p className="text-red-600 text-sm mt-1">{errors.shop_name}</p>}
@@ -262,9 +260,8 @@ function Shop() {
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     rows="3"
-                    className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:border-blue-500 resize-y transition-all ${
-                      errors.address ? 'border-red-500 bg-red-50' : 'border-gray-200'
-                    }`}
+                    className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:border-blue-500 resize-y transition-all ${errors.address ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                      }`}
                     placeholder="مکمل پتہ درج کریں (مثلاً: دکان نمبر ۴، مین روڈ، کراچی)"
                   />
                   {errors.address && <p className="text-red-600 text-sm mt-1">{errors.address}</p>}
@@ -311,7 +308,7 @@ function Shop() {
       {showUpdateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-3xl w-full max-w-md mx-auto my-auto p-6 shadow-2xl">
-            
+
             <h2 className="text-2xl font-bold mb-6 text-center">اسٹور کی تفصیلات تبدیل کریں</h2>
 
             {/* Success/Error Message */}
@@ -327,7 +324,7 @@ function Shop() {
               <div>
                 <input
                   value={updateForm.shop_name}
-                  onChange={(e) => setUpdateForm({...updateForm, shop_name: e.target.value})}
+                  onChange={(e) => setUpdateForm({ ...updateForm, shop_name: e.target.value })}
                   className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:border-blue-500 ${updateErrors.shop_name ? 'border-red-500' : 'border-gray-200'}`}
                   placeholder="اسٹور کا نام"
                 />
@@ -338,7 +335,7 @@ function Shop() {
               <div>
                 <textarea
                   value={updateForm.address}
-                  onChange={(e) => setUpdateForm({...updateForm, address: e.target.value})}
+                  onChange={(e) => setUpdateForm({ ...updateForm, address: e.target.value })}
                   rows="3"
                   className={`w-full p-3 border-2 rounded-xl focus:outline-none focus:border-blue-500 resize-y ${updateErrors.address ? 'border-red-500' : 'border-gray-200'}`}
                   placeholder="اسٹور کا پتہ"
@@ -401,7 +398,7 @@ function Shop() {
                 <li>رپورٹس</li>
               </ul> */}
               <p className="mt-2 font-bold">⚠️ اسٹور کا نام اور پتہ بلز اور اُدھار پر ظاہر ہوتا ہے۔ حذف کرنے سے بلز اور اُدھار میں یہ فیلڈز خالی دکھائی دیں گی۔</p>
-              </div>
+            </div>
 
             {/* CONFIRM INPUT */}
             <input
