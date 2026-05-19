@@ -747,6 +747,7 @@ function BillItems({ onItemAdded, onClose }) {
       </div>
 
       {/* Manual Add Form Modal - z-index increased to 300 */}
+      {/* Manual Add Form Modal - z-index increased to 300 */}
       {
         showForm && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[300] flex justify-center items-center p-4">
@@ -754,12 +755,8 @@ function BillItems({ onItemAdded, onClose }) {
               <BillItemForm
                 onCancel={() => handleFormClose(false)}
                 onSave={async (formData) => {
-                  try {
-                    await addCustomItemToCart(formData);
-                    handleFormClose(true);
-                  } catch (error) {
-                    console.error("Failed to add item:", error);
-                  }
+                  await addCustomItemToCart(formData);
+                  handleFormClose(true);
                 }}
                 showMsg={showMsg}
                 availableItems={availableItems}
