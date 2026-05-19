@@ -69,7 +69,7 @@ function MainLayout() {
     { to: "/khata", icon: "📒", label: "کھاتہ کتاب" },
     { to: "/bills", icon: "📄", label: "بلز مینجمنٹ" },
     { to: "/sales", icon: "💰", label: "فروخت کی ریکارڈ" },
-    { to: "/bill-item-history", icon: "📜", label: "بل آئٹم ہسٹری" },
+    // { to: "/bill-item-history", icon: "📜", label: "بل آئٹم ہسٹری" },
     { to: "/shop", icon: "🛒", label: "اسٹور سیٹنگز" },
     { to: "/sales-report", icon: "📊", label: "فروخت رپورٹ" },
     { to: "/forecast-report", icon: "🔮", label: "پیشن گوئی رپورٹ" },

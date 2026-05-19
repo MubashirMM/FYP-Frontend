@@ -676,27 +676,39 @@ function Udhaars({ onItemAdded, onClose }) {
             <form onSubmit={handleDirectAddition}>
               <div className="mb-4">
                 <label className="block text-sm font-bold mb-2 text-right">کسٹمر کا نام *</label>
-                <input
-                  type="text"
-                  list="customer-list"
+                <select
                   value={selectedCustomer}
                   onChange={(e) => setSelectedCustomer(e.target.value)}
-                  placeholder="موجودہ کسٹمر منتخب کریں یا نیا نام لکھیں"
                   className="w-full p-4 border-2 rounded-2xl text-right focus:border-green-500 outline-none"
                   required
-                />
-                <datalist id="customer-list">
-                  {udhars.map(u => <option key={u.udhar_id} value={u.customer_name} />)}
-                </datalist>
-                <p className="text-xs text-gray-500 mt-1 text-right">💡 آپ موجودہ کسٹمر منتخب کر سکتے ہیں یا نیا نام لکھ سکتے ہیں</p>
+                >
+                  <option value="">کسٹمر منتخب کریں</option>
+                  {udhars.map(u => (
+                    <option key={u.udhar_id} value={u.customer_name}>
+                      {u.customer_name} - {u.status === "paid" ? "✅ ادا شدہ" : `💰 ${u.total?.toLocaleString()} روپے`}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="mb-6">
                 <label className="block text-sm font-bold mb-2 text-right">رقم (روپے میں) *</label>
-                <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="مثلاً: 500" className="w-full p-4 border-2 rounded-2xl text-right focus:border-green-500 outline-none" required />
+                <input
+                  type="number"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="مثلاً: 500"
+                  className="w-full p-4 border-2 rounded-2xl text-right focus:border-green-500 outline-none"
+                  required
+                />
               </div>
               <div className="flex gap-4">
-                <button type="submit" disabled={formLoading} className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold hover:bg-green-700 transition-all">{formLoading ? "جمع کر رہا ہے..." : "✅ جمع کریں"}</button>
-                <button type="button" onClick={() => { setShowAdditionForm(false); setSelectedCustomer(""); setAmount(""); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold hover:bg-gray-300 transition-all">❌ منسوخ</button>
+                <button type="submit" disabled={formLoading} className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold hover:bg-green-700 transition-all">
+                  {formLoading ? "جمع کر رہا ہے..." : "✅ جمع کریں"}
+                </button>
+                <button type="button" onClick={() => { setShowAdditionForm(false); setSelectedCustomer(""); setAmount(""); }} className="flex-1 bg-gray-200 py-4 rounded-2xl font-bold hover:bg-gray-300 transition-all">
+                  ❌ منسوخ
+                </button>
               </div>
             </form>
           </div>

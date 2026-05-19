@@ -8,7 +8,7 @@ const API = import.meta.env.VITE_API_URL;
 const ALLOWED_UNITS = [
   "کلو", "گرام", "پاؤ", "آدھا پاؤ", "چھٹانک", "سیر", "من", "بوری", "بوریاں",
   "لیٹر", "ملی لیٹر", "عدد", "درجن", "آدھا درجن",
-  "پیکٹ", "ڈبہ", "بوتل", "کلوگرام"
+  "پیکٹ", "ڈبہ", "بوتل",
 ];
 
 function Items({ onItemAdded, onClose }) {
@@ -51,9 +51,9 @@ function Items({ onItemAdded, onClose }) {
 
   const handleVoiceCommand = async (commandJson) => {
     console.log("Voice command received on Items page:", commandJson);
-    
+
     const voiceService = new ItemVoiceService(showMsg, fetchItems);
-    
+
     await voiceService.processCommand(commandJson, {
       onShowAddForm: (formData) => {
         setCurrentItem(null);
@@ -70,25 +70,25 @@ function Items({ onItemAdded, onClose }) {
       },
       onSearch: (searchTerm) => {
         setSearch(searchTerm);
-        const filtered = items.filter(item => 
+        const filtered = items.filter(item =>
           item.item_name.toLowerCase().includes(searchTerm.toLowerCase())
         );
         setFilteredItems(filtered);
         setCurrentPage(1);
         setView("LIST");
       },
-      onOpenItemsPopup: () => {}
+      onOpenItemsPopup: () => { }
     });
   };
 
   const handleSearchChange = (e) => {
     const searchTerm = e.target.value;
     setSearch(searchTerm);
-    
+
     if (!searchTerm.trim()) {
       setFilteredItems(items);
     } else {
-      const filtered = items.filter(item => 
+      const filtered = items.filter(item =>
         item.item_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredItems(filtered);
@@ -98,7 +98,7 @@ function Items({ onItemAdded, onClose }) {
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
-    
+
     try {
       await axios.delete(`${API}/items/${deleteConfirm.id}`, getAuthHeader());
       showMsg(`✅ "${deleteConfirm.name}" کامیابی سے حذف کر دیا گیا`, "success");
@@ -185,19 +185,19 @@ function Items({ onItemAdded, onClose }) {
                 <h2 className="text-2xl font-bold text-gray-800 font-urdu">📦 آئٹمز کی فہرست</h2>
                 <p className="text-gray-500 text-sm mt-1">کل آئٹمز: {filteredItems.length}</p>
               </div>
-              
+
               <div className="flex gap-3 w-full md:w-auto">
                 <div className="relative flex-1">
-                  <input 
+                  <input
                     type="text"
-                    placeholder="🔍 آئٹم تلاش کریں..." 
-                    value={search} 
+                    placeholder="🔍 آئٹم تلاش کریں..."
+                    value={search}
                     onChange={handleSearchChange}
                     className="w-full md:w-80 p-3 border-2 border-gray-200 rounded-xl bg-white focus:border-purple-500 focus:outline-none text-sm font-urdu text-right"
                   />
                 </div>
-                <button 
-                  onClick={handleAddNew} 
+                <button
+                  onClick={handleAddNew}
                   className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold text-sm"
                 >
                   + نیا آئٹم
@@ -283,10 +283,10 @@ function Items({ onItemAdded, onClose }) {
           )}
         </div>
       ) : (
-        <ItemForm 
+        <ItemForm
           mode={getFormMode()}
-          initialData={getFormInitialData()} 
-          onCancel={() => handleFormClose(false)} 
+          initialData={getFormInitialData()}
+          onCancel={() => handleFormClose(false)}
           onSave={() => handleFormClose(true)}
           showMsg={showMsg}
         />
@@ -315,10 +315,10 @@ function Items({ onItemAdded, onClose }) {
 // ============================================
 function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
   const [formData, setFormData] = useState({
-    item_name: "", 
-    item_unit: "", 
-    custom_unit: "", 
-    unit_price: "", 
+    item_name: "",
+    item_unit: "",
+    custom_unit: "",
+    unit_price: "",
     stock_quantity: ""
   });
   const [errors, setErrors] = useState({});
@@ -335,10 +335,10 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
       });
     } else {
       setFormData({
-        item_name: "", 
-        item_unit: "", 
-        custom_unit: "", 
-        unit_price: "", 
+        item_name: "",
+        item_unit: "",
+        custom_unit: "",
+        unit_price: "",
         stock_quantity: ""
       });
     }
@@ -361,7 +361,7 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
     e.preventDefault();
     if (!validateForm()) return;
     setIsSubmitting(true);
-    
+
     const finalUnit = formData.item_unit === "__custom" ? formData.custom_unit : formData.item_unit;
     const payload = {
       item_name: formData.item_name.trim(),
@@ -392,20 +392,20 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
       <h3 className="text-2xl font-bold mb-6 border-r-4 border-purple-600 pr-3 text-right">
         {mode === "ADD" ? "➕ نیا آئٹم شامل کریں" : "✏️ آئٹم کی ترمیم کریں"}
       </h3>
-      
+
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* ITEM NAME */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
             آئٹم کا نام <span className="text-red-500">*</span>
           </label>
-          <input 
+          <input
             type="text"
-            className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 transition-colors ${
-              errors.item_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
-            }`}
-            value={formData.item_name} 
-            onChange={e => setFormData({...formData, item_name: e.target.value})}
+            style={{ lineHeight: "normal", height: "auto" }}
+            className={`w-full px-4 py-2 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 transition-colors ${errors.item_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
+              }`}
+            value={formData.item_name}
+            onChange={e => setFormData({ ...formData, item_name: e.target.value })}
             placeholder="مثال: باسمتی چاول"
           />
           {errors.item_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_name}</p>}
@@ -417,12 +417,11 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
               اکائی <span className="text-red-500">*</span>
             </label>
-            <select 
-              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
-                errors.item_unit ? 'border-red-500' : 'border-gray-200'
-              }`}
-              value={formData.item_unit} 
-              onChange={e => setFormData({...formData, item_unit: e.target.value})}
+            <select
+              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${errors.item_unit ? 'border-red-500' : 'border-gray-200'
+                }`}
+              value={formData.item_unit}
+              onChange={e => setFormData({ ...formData, item_unit: e.target.value })}
             >
               <option value="">منتخب کریں</option>
               {ALLOWED_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -437,11 +436,11 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
               <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
                 اپنی اکائی <span className="text-red-500">*</span>
               </label>
-              <input 
+              <input
                 type="text"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500"
-                value={formData.custom_unit} 
-                onChange={e => setFormData({...formData, custom_unit: e.target.value})}
+                value={formData.custom_unit}
+                onChange={e => setFormData({ ...formData, custom_unit: e.target.value })}
                 placeholder="مثال: گٹھلی"
               />
             </div>
@@ -454,14 +453,13 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
               قیمت فی اکائی (PKR) <span className="text-red-500">*</span>
             </label>
-            <input 
+            <input
               type="number"
               step="0.01"
-              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
-                errors.unit_price ? 'border-red-500' : 'border-gray-200'
-              }`}
-              value={formData.unit_price} 
-              onChange={e => setFormData({...formData, unit_price: e.target.value})}
+              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${errors.unit_price ? 'border-red-500' : 'border-gray-200'
+                }`}
+              value={formData.unit_price}
+              onChange={e => setFormData({ ...formData, unit_price: e.target.value })}
               placeholder="مثال: 2500"
             />
             {errors.unit_price && <p className="text-red-600 text-sm mt-1 text-right">{errors.unit_price}</p>}
@@ -471,14 +469,13 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
               موجودہ اسٹاک <span className="text-red-500">*</span>
             </label>
-            <input 
+            <input
               type="number"
               step="0.01"
-              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${
-                errors.stock_quantity ? 'border-red-500' : 'border-gray-200'
-              }`}
-              value={formData.stock_quantity} 
-              onChange={e => setFormData({...formData, stock_quantity: e.target.value})}
+              className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 ${errors.stock_quantity ? 'border-red-500' : 'border-gray-200'
+                }`}
+              value={formData.stock_quantity}
+              onChange={e => setFormData({ ...formData, stock_quantity: e.target.value })}
               placeholder="مثال: 50"
             />
             {errors.stock_quantity && <p className="text-red-600 text-sm mt-1 text-right">{errors.stock_quantity}</p>}
@@ -487,16 +484,16 @@ function ItemForm({ mode, initialData, onCancel, onSave, showMsg }) {
 
         {/* Buttons */}
         <div className="flex gap-3 pt-6">
-          <button 
-            type="submit" 
-            disabled={isSubmitting} 
+          <button
+            type="submit"
+            disabled={isSubmitting}
             className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-bold transition-colors disabled:bg-gray-400 text-base"
           >
             {isSubmitting ? "محفوظ ہو رہا ہے..." : "💾 محفوظ کریں"}
           </button>
-          <button 
-            type="button" 
-            onClick={onCancel} 
+          <button
+            type="button"
+            onClick={onCancel}
             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-colors text-base"
           >
             ✕ منسوخ کریں

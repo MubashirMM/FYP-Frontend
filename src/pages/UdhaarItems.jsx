@@ -123,13 +123,24 @@ function UdhaarItems({ onItemAdded, onClose }) {
     }
   };
 
-  const handleAddNew = () => {
+  const refreshAvailableItems = async () => {
+    try {
+      const res = await axios.get(`${API}/items`, getAuthHeader());
+      const data = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      setAvailableItems(data);
+    } catch (err) {
+      console.error("Failed to refresh items", err);
+    }
+  };
+  const handleAddNew = async () => {
+    await refreshAvailableItems();  // Add this line
     setCurrentItem(null);
     setAutoFillFormData(null);
     setShowForm(true);
   };
 
-  const handleEdit = (item) => {
+  const handleEdit = async (item) => {
+    await refreshAvailableItems();  // Add this line
     const requestedUnit = item.requested_unit || item.unit || "";
     const isCustomUnit = !ALLOWED_UNITS.includes(requestedUnit);
     const editData = {
@@ -146,12 +157,13 @@ function UdhaarItems({ onItemAdded, onClose }) {
     setShowForm(true);
   };
 
-  const handleFormClose = (shouldRefresh = false) => {
+  const handleFormClose = async (shouldRefresh = false) => {
     setShowForm(false);
     setCurrentItem(null);
     setAutoFillFormData(null);
     if (shouldRefresh) {
-      fetchUdhaarItems();
+      await fetchUdhaarItems();
+      await refreshAvailableItems();  // Add this line
       if (onItemAdded) onItemAdded();
     }
   };
@@ -445,7 +457,8 @@ function UdhaarItemForm({ mode, initialData, onCancel, onSave, showMsg, availabl
           </label>
           <input
             type="text"
-            className={`w-full px-4 py-3 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-amber-500 transition-colors ${errors.customer_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
+            style={{ lineHeight: "normal", height: "auto" }}
+            className={`w-full px-4 py-2 border-2 rounded-xl text-right bg-white focus:outline-none focus:border-purple-500 transition-colors ${errors.item_name ? 'border-red-500 bg-red-50' : 'border-gray-200'
               }`}
             value={formData.customer_name}
             onChange={e => setFormData({ ...formData, customer_name: e.target.value })}

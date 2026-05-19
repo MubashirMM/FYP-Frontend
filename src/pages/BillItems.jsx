@@ -66,7 +66,6 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [API, showMsg]);
 
-  // Fetch cart items - FIXED: Use backend's total_amount directly
   const fetchCartFromBackend = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/cart/items`, getAuthHeader());
@@ -98,14 +97,12 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [API]);
 
-  // FIXED: Add to cart - Check by name AND requested_unit
   const handleAddToCart = useCallback(async (item, customUnit = null, customQuantity = 1) => {
     setLoading(true);
     try {
       const requestedUnit = customUnit || item.item_unit;
       const quantity = customQuantity;
 
-      // Check if item with SAME name AND SAME requested unit already exists in cart
       const existingItem = cartItems.find(
         cartItem => cartItem.item_name.toLowerCase() === item.item_name.toLowerCase() &&
           cartItem.requested_unit === requestedUnit
@@ -137,7 +134,6 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [cartItems, API, showMsg, fetchCartFromBackend, onItemAdded]);
 
-  // FIXED: Increment quantity
   const handleIncrement = useCallback(async (item) => {
     if (!item.cart_item_id) {
       showMsg(`❌ ${item.item_name} کی ID نہیں مل سکی`, "error");
@@ -163,7 +159,6 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [API, showMsg, fetchCartFromBackend]);
 
-  // FIXED: Decrement quantity
   const handleDecrement = useCallback(async (item) => {
     if (!item.cart_item_id) {
       showMsg(`❌ ${item.item_name} کی ID نہیں مل سکی`, "error");
@@ -195,7 +190,6 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [API, showMsg, fetchCartFromBackend]);
 
-  // FIXED: Remove from cart
   const handleRemoveFromCart = useCallback(async (item) => {
     if (!item.cart_item_id) {
       showMsg(`❌ ${item.item_name} کی ID نہیں مل سکی`, "error");
@@ -215,33 +209,30 @@ function BillItems({ onItemAdded, onClose }) {
     }
   }, [API, showMsg, fetchCartFromBackend]);
 
-  // FIXED: Add custom item with unit check - prevent duplicates
   const addCustomItemToCart = useCallback(async (formData) => {
     const finalUnit = formData.requested_unit;
     const itemName = formData.item_name;
     const quantity = Number(formData.quantity);
 
     const existingItemInDB = availableItems.find(
-      item => item.item_name.toLowerCase() === itemName.toLowerCase()
+      item => item.item_name === itemName
     );
 
     if (!existingItemInDB) {
       showMsg(`❌ "${itemName}" موجود نہیں ہے`, "error");
-      return;
+      throw new Error("Item not found");
     }
 
-    // Check if item with same name AND same requested unit exists in cart
     const existingInCart = cartItems.find(
-      cartItem => cartItem.item_name.toLowerCase() === itemName.toLowerCase() &&
+      cartItem => cartItem.item_name === itemName &&
         cartItem.requested_unit === finalUnit
     );
 
     if (existingInCart) {
       showMsg(`⚠️ ${itemName} (${finalUnit}) پہلے سے کارٹ میں موجود ہے`, "error");
-      return;
+      throw new Error("Item already in cart");
     }
 
-    setLoading(true);
     try {
       await axios.post(`${API}/cart/add`, null, {
         params: {
@@ -252,17 +243,16 @@ function BillItems({ onItemAdded, onClose }) {
         ...getAuthHeader()
       });
       showMsg(`✅ ${itemName} (${finalUnit}) کارٹ میں شامل کر دیا گیا`, "success");
-
       await fetchCartFromBackend();
       if (onItemAdded) onItemAdded();
+      return true;
     } catch (err) {
       console.error("Failed to add to cart:", err);
-      showMsg(err.response?.data?.detail || "کارٹ میں شامل کرنے میں خرابی", "error");
-    } finally {
-      setLoading(false);
+      const errorMsg = err.response?.data?.detail || "کارٹ میں شامل کرنے میں خرابی";
+      showMsg(errorMsg, "error");
+      throw new Error(errorMsg);
     }
   }, [availableItems, cartItems, API, showMsg, fetchCartFromBackend, onItemAdded]);
-
   const handleClearCart = useCallback(async () => {
     if (cartItems.length === 0) {
       showMsg("کارٹ پہلے سے خالی ہے", "error");
@@ -311,7 +301,7 @@ function BillItems({ onItemAdded, onClose }) {
             item_name: item.item_name,
             quantity: item.quantity,
             requested_unit: item.requested_unit,
-            unit_price: (item.total_amount / item.quantity).toFixed(2), // Price per requested unit
+            unit_price: (item.total_amount / item.quantity).toFixed(2),
             total_amount: item.total_amount
           })),
           total_amount: totalCartAmount
@@ -494,9 +484,9 @@ function BillItems({ onItemAdded, onClose }) {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-3 md:p-6" dir="rtl">
-      {/* Message Toast */}
+      {/* Message Toast - Higher z-index to show above modals */}
       {message.text && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl"
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[999] px-6 py-3 rounded-2xl shadow-2xl"
           style={{
             backgroundColor: message.type === 'success' ? '#10b981' : '#ef4444',
             color: 'white'
@@ -698,7 +688,6 @@ function BillItems({ onItemAdded, onClose }) {
                 </thead>
                 <tbody>
                   {(search ? filteredItems : cartItems).map((item) => {
-                    // Calculate price per requested unit
                     const pricePerUnit = (item.total_amount / item.quantity).toFixed(2);
                     return (
                       <tr key={item.cart_item_id} className="border-b hover:bg-blue-50/30 transition-colors">
@@ -746,37 +735,45 @@ function BillItems({ onItemAdded, onClose }) {
                   <tr>
                     <td colSpan="4" className="p-4 text-left font-bold text-lg">کل رقم:</td>
                     <td className="p-4 text-center font-bold text-xl text-green-700">Rs. {totalCartAmount.toLocaleString()}</td>
-                    <td></td>
+                    <tr>
+                    </tr>
                   </tr>
                 </tfoot>
+
               </table>
             )}
           </div>
         </div>
       </div>
 
-      {/* Manual Add Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex justify-center items-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-            <BillItemForm
-              onCancel={() => handleFormClose(false)}
-              onSave={(formData) => {
-                addCustomItemToCart(formData);
-                handleFormClose(true);
-              }}
-              showMsg={showMsg}
-              availableItems={availableItems}
-              cartItems={cartItems}
-            />
+      {/* Manual Add Form Modal - z-index increased to 300 */}
+      {
+        showForm && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[300] flex justify-center items-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+              <BillItemForm
+                onCancel={() => handleFormClose(false)}
+                onSave={async (formData) => {
+                  try {
+                    await addCustomItemToCart(formData);
+                    handleFormClose(true);
+                  } catch (error) {
+                    console.error("Failed to add item:", error);
+                  }
+                }}
+                showMsg={showMsg}
+                availableItems={availableItems}
+                cartItems={cartItems}
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
 
-// BillItemForm Component - FIXED with duplicate check
+// BillItemForm Component - With inline error messages
 function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [] }) {
   const [formData, setFormData] = useState({
     item_name: "",
@@ -788,11 +785,12 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [itemExists, setItemExists] = useState(null);
   const [matchingItem, setMatchingItem] = useState(null);
+  const [formMessage, setFormMessage] = useState({ text: "", type: "" });
 
   useEffect(() => {
-    if (formData.item_name.trim()) {
+    if (formData.item_name) {
       const foundItem = availableItems.find(
-        item => item.item_name.toLowerCase() === formData.item_name.toLowerCase()
+        item => item.item_name === formData.item_name
       );
       setMatchingItem(foundItem);
       setItemExists(!!foundItem);
@@ -802,6 +800,8 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
           ...prev,
           requested_unit: foundItem.item_unit,
         }));
+        // Clear any previous error message for item_name
+        setFormMessage({ text: "", type: "" });
       }
     } else {
       setItemExists(null);
@@ -812,8 +812,8 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
   const validateForm = () => {
     let errs = {};
 
-    if (!formData.item_name.trim()) {
-      errs.item_name = "آئٹم کا نام درج کرنا ضروری ہے";
+    if (!formData.item_name) {
+      errs.item_name = "آئٹم کا نام منتخب کرنا ضروری ہے";
     } else if (!itemExists) {
       errs.item_name = `"${formData.item_name}" موجود نہیں ہے`;
     }
@@ -828,10 +828,9 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
       errs.requested_unit = "اکائی منتخب کریں";
     }
 
-    // Check for duplicate in cart
     if (itemExists && formData.requested_unit) {
       const existingInCart = cartItems.find(
-        cartItem => cartItem.item_name.toLowerCase() === formData.item_name.toLowerCase() &&
+        cartItem => cartItem.item_name === formData.item_name &&
           cartItem.requested_unit === formData.requested_unit
       );
       if (existingInCart) {
@@ -843,21 +842,42 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    setFormMessage({ text: "", type: "" });
+
     const submissionData = {
-      item_name: formData.item_name.trim(),
+      item_name: formData.item_name,
       quantity: Number(formData.quantity),
       requested_unit: formData.requested_unit,
     };
 
-    setTimeout(() => {
-      onSave(submissionData);
-      setIsSubmitting(false);
-    }, 500);
+    try {
+      await onSave(submissionData);
+      // Success - form will close from parent
+    } catch (error) {
+      // Error occurred - stop loader and show message
+      console.error("Submission error:", error);
+      setFormMessage({
+        text: error.message || "شامل کرنے میں خرابی",
+        type: "error"
+      });
+      setIsSubmitting(false); // IMPORTANT: Stop the loader
+    }
+  };
+
+  // Helper to clear form message when user corrects input
+  const handleFieldChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (formMessage.text) {
+      setFormMessage({ text: "", type: "" });
+    }
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: "" }));
+    }
   };
 
   return (
@@ -866,33 +886,39 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
         ➕ نیا نقد آئٹم شامل کریں
       </h3>
 
+      {/* Form Error Message */}
+      {formMessage.text && (
+        <div className={`mb-4 p-3 rounded-xl text-center text-sm ${formMessage.type === "error" ? "bg-red-100 text-red-700 border border-red-200" : "bg-green-100 text-green-700"}`}>
+          {formMessage.type === "error" ? "❌ " : "✅ "}{formMessage.text}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
             آئٹم کا نام <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            list="available-items-list"
+          <select
             value={formData.item_name}
-            onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
-            className={`w-full p-3 border-2 rounded-xl outline-none transition-all text-right text-base ${errors.item_name ? "border-red-500 bg-red-50" :
+            onChange={(e) => handleFieldChange("item_name", e.target.value)}
+            className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.item_name ? "border-red-500 bg-red-50" :
               itemExists === true ? "border-green-500 bg-green-50" :
                 "border-gray-200 focus:border-green-500"
               }`}
-            placeholder="آئٹم نام لکھیں یا منتخب کریں..."
-            autoComplete="off"
-          />
-          <datalist id="available-items-list">
+          >
+            <option value="">-- آئٹم منتخب کریں --</option>
             {availableItems.map(item => (
               <option key={item.item_id} value={item.item_name}>
-                {item.item_name} - {item.item_unit} (Rs. {item.unit_price})
+                {item.item_name} - {item.item_unit} (Rs. {item.unit_price}) | اسٹاک: {item.stock_quantity}
               </option>
             ))}
-          </datalist>
+          </select>
+          {availableItems.length === 0 && (
+            <p className="text-amber-600 text-sm mt-1 text-right">⚠️ پہلے "آئٹمز" مینو سے آئٹم شامل کریں</p>
+          )}
           {itemExists === true && !errors.item_name && matchingItem && (
             <p className="text-green-600 text-sm mt-1 text-right">
-              ✓ یہ آئٹم موجود ہے (اکائی: {matchingItem.item_unit}, قیمت فی {matchingItem.item_unit}: Rs. {matchingItem.unit_price})
+              ✓ اسٹاک میں باقی: {matchingItem.stock_quantity} {matchingItem.item_unit}
             </p>
           )}
           {errors.item_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_name}</p>}
@@ -907,7 +933,8 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
               type="number"
               step="0.01"
               value={formData.quantity}
-              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+              onChange={(e) => handleFieldChange("quantity", e.target.value)}
+              style={{ lineHeight: "normal", height: "auto" }}
               className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.quantity ? "border-red-500 bg-red-50" : "border-gray-200 focus:border-green-500"
                 }`}
               placeholder="مثال: 2.5"
@@ -921,8 +948,9 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
             </label>
             <select
               value={formData.requested_unit}
-              onChange={(e) => setFormData({ ...formData, requested_unit: e.target.value })}
+              onChange={(e) => handleFieldChange("requested_unit", e.target.value)}
               disabled={!itemExists}
+              style={{ lineHeight: "normal", height: "auto" }}
               className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.requested_unit ? "border-red-500" :
                 "border-gray-200 focus:border-green-500"
                 } ${!itemExists ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
