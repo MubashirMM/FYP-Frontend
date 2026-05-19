@@ -55,18 +55,18 @@ function Sales({ onClose }) {
       applyFiltersAndSort(data, search, sortBy, sortOrder);
 
       // Fetch summary
-      await fetchSummary();
+      setSummary({ total_sales: data.length, total_quantity: data.reduce((sum, sale) => sum + (sale.quantity_sold || 0), 0) });
     } catch (err) {
       showMsg(err.response?.data?.detail || "فروخت لوڈ کرنے میں خرابی", "error");
     } finally { setLoading(false); }
   };
 
-  const fetchSummary = async () => {
+  const fetchSummary = async (start = startDate, end = endDate) => {
     try {
       let url = `${API}/sales/summary`;
       const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
+      if (start) params.append("start_date", start);
+      if (end) params.append("end_date", end);
       if (params.toString()) url += `?${params.toString()}`;
 
       const res = await axios.get(url, getAuthHeader());
@@ -254,7 +254,7 @@ function Sales({ onClose }) {
         <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
           <div>
             <h2 className="text-2xl font-black text-gray-800">💰 فروخت کی فہرست</h2>
-            <p className="text-gray-500">کل فروخت: {filteredSales.length} | کل مقدار: {summary.total_quantity || 0}</p>
+            <p className=" mt-1 text-gray-500">کل فروخت: {filteredSales.length} | کل مقدار: {summary.total_quantity || 0}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <button onClick={() => handleSort("customer")} className={`px-4 py-2 rounded-2xl font-bold text-sm ${sortBy === "customer" ? "bg-emerald-600 text-white" : "bg-gray-100"}`}>

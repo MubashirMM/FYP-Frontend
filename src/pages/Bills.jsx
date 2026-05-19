@@ -527,7 +527,7 @@ function Bills({ onItemAdded, onClose }) {
         <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
           <div>
             <h2 className="text-2xl font-black text-gray-800">🧾 بلز کی فہرست</h2>
-            <p className="text-gray-500">کل بلز: {filteredBills.length}</p>
+            <p className="mt-1 text-gray-500">کل بلز: {filteredBills.length}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <button onClick={() => handleSort("customer")} className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all ${sortBy === "customer" ? "bg-blue-600 text-white" : "bg-gray-100 hover:bg-gray-200"}`}>

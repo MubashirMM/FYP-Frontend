@@ -749,7 +749,7 @@ function Udhaars({ onItemAdded, onClose }) {
         <div className="p-5">
           <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
             <div>
-              <h2 className="text-2xl font-black text-gray-800">📒 کھاتہ (اُدھار کا خلاصہ)</h2>
+              <h2 className=" mb-3 text-2xl font-black text-gray-800">📒 کھاتہ (اُدھار کا خلاصہ)</h2>
               <p className="text-gray-500">کل کسٹمرز: {filteredUdhars.length}</p>
             </div>
             <div className="flex gap-2 flex-wrap">
