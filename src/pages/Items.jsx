@@ -6,7 +6,7 @@ import { ItemVoiceService } from "../services/ItemVoiceService";
 const API = import.meta.env.VITE_API_URL;
 
 const ALLOWED_UNITS = [
-  "کلو", "گرام", "پاؤ", "آدھا پاؤ", "چھٹانک", "سیر", "من", "بوری", "بوریاں",
+  "کلو", "گرام", "پاؤ", "آدھا پاؤ", "چھٹانک", "سیر", "من", "بوری",
   "لیٹر", "ملی لیٹر", "عدد", "درجن", "آدھا درجن",
   "پیکٹ", "ڈبہ", "بوتل",
 ];

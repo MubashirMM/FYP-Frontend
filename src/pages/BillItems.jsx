@@ -253,6 +253,7 @@ function BillItems({ onItemAdded, onClose }) {
       throw new Error(errorMsg);
     }
   }, [availableItems, cartItems, API, showMsg, fetchCartFromBackend, onItemAdded]);
+
   const handleClearCart = useCallback(async () => {
     if (cartItems.length === 0) {
       showMsg("کارٹ پہلے سے خالی ہے", "error");
@@ -739,43 +740,40 @@ function BillItems({ onItemAdded, onClose }) {
                     </tr>
                   </tr>
                 </tfoot>
-
               </table>
             )}
           </div>
         </div>
       </div>
 
-      {/* Manual Add Form Modal - z-index increased to 300 */}
-      {/* Manual Add Form Modal - z-index increased to 300 */}
-      {
-        showForm && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[300] flex justify-center items-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-              <BillItemForm
-                onCancel={() => handleFormClose(false)}
-                onSave={async (formData) => {
-                  await addCustomItemToCart(formData);
-                  handleFormClose(true);
-                }}
-                showMsg={showMsg}
-                availableItems={availableItems}
-                cartItems={cartItems}
-              />
-            </div>
+      {/* Manual Add Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[300] flex justify-center items-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <BillItemForm
+              onCancel={() => handleFormClose(false)}
+              onSave={async (formData) => {
+                await addCustomItemToCart(formData);
+                handleFormClose(true);
+              }}
+              showMsg={showMsg}
+              availableItems={availableItems}
+              cartItems={cartItems}
+            />
           </div>
-        )
-      }
-    </div >
+        </div>
+      )}
+    </div>
   );
 }
 
-// BillItemForm Component - With inline error messages
+// BillItemForm Component - With custom unit support
 function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [] }) {
   const [formData, setFormData] = useState({
     item_name: "",
     quantity: "",
     requested_unit: "",
+    custom_unit: ""
   });
 
   const [errors, setErrors] = useState({});
@@ -783,6 +781,7 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
   const [itemExists, setItemExists] = useState(null);
   const [matchingItem, setMatchingItem] = useState(null);
   const [formMessage, setFormMessage] = useState({ text: "", type: "" });
+  const [useCustomUnit, setUseCustomUnit] = useState(false);
 
   useEffect(() => {
     if (formData.item_name) {
@@ -793,16 +792,32 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
       setItemExists(!!foundItem);
 
       if (foundItem) {
-        setFormData(prev => ({
-          ...prev,
-          requested_unit: foundItem.item_unit,
-        }));
-        // Clear any previous error message for item_name
+        // Check if item's unit is in allowed units list
+        const isUnitAllowed = ALLOWED_UNITS.includes(foundItem.item_unit);
+
+        if (isUnitAllowed) {
+          setFormData(prev => ({
+            ...prev,
+            requested_unit: foundItem.item_unit,
+            custom_unit: ""
+          }));
+          setUseCustomUnit(false);
+        } else {
+          // Item has custom unit not in the list
+          setFormData(prev => ({
+            ...prev,
+            requested_unit: "",
+            custom_unit: foundItem.item_unit
+          }));
+          setUseCustomUnit(true);
+        }
         setFormMessage({ text: "", type: "" });
       }
     } else {
       setItemExists(null);
       setMatchingItem(null);
+      setUseCustomUnit(false);
+      setFormData(prev => ({ ...prev, requested_unit: "", custom_unit: "" }));
     }
   }, [formData.item_name, availableItems]);
 
@@ -821,17 +836,19 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
       errs.quantity = "مقدار صفر سے زیادہ ہونی چاہیے";
     }
 
-    if (!formData.requested_unit) {
-      errs.requested_unit = "اکائی منتخب کریں";
+    // Validate unit (either selected from list or custom)
+    const finalUnit = useCustomUnit ? formData.custom_unit : formData.requested_unit;
+    if (!finalUnit?.trim()) {
+      errs.requested_unit = "اکائی درج کریں یا منتخب کریں";
     }
 
-    if (itemExists && formData.requested_unit) {
+    if (itemExists && finalUnit) {
       const existingInCart = cartItems.find(
         cartItem => cartItem.item_name === formData.item_name &&
-          cartItem.requested_unit === formData.requested_unit
+          cartItem.requested_unit === finalUnit
       );
       if (existingInCart) {
-        errs.requested_unit = `⚠️ ${formData.item_name} (${formData.requested_unit}) پہلے سے کارٹ میں موجود ہے`;
+        errs.requested_unit = `⚠️ ${formData.item_name} (${finalUnit}) پہلے سے کارٹ میں موجود ہے`;
       }
     }
 
@@ -846,27 +863,26 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
     setIsSubmitting(true);
     setFormMessage({ text: "", type: "" });
 
+    const finalUnit = useCustomUnit ? formData.custom_unit : formData.requested_unit;
+
     const submissionData = {
       item_name: formData.item_name,
       quantity: Number(formData.quantity),
-      requested_unit: formData.requested_unit,
+      requested_unit: finalUnit,
     };
 
     try {
       await onSave(submissionData);
-      // Success - form will close from parent
     } catch (error) {
-      // Error occurred - stop loader and show message
       console.error("Submission error:", error);
       setFormMessage({
         text: error.message || "شامل کرنے میں خرابی",
         type: "error"
       });
-      setIsSubmitting(false); // IMPORTANT: Stop the loader
+      setIsSubmitting(false);
     }
   };
 
-  // Helper to clear form message when user corrects input
   const handleFieldChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (formMessage.text) {
@@ -916,6 +932,9 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
           {itemExists === true && !errors.item_name && matchingItem && (
             <p className="text-green-600 text-sm mt-1 text-right">
               ✓ اسٹاک میں باقی: {matchingItem.stock_quantity} {matchingItem.item_unit}
+              {!ALLOWED_UNITS.includes(matchingItem.item_unit) && (
+                <span className="text-amber-600 block mt-1">⚠️ نوٹ: یہ آئٹم کی اکائی "{matchingItem.item_unit}" معیاری فہرست میں نہیں ہے، براہ کرم نیچے خود لکھیں</span>
+              )}
             </p>
           )}
           {errors.item_name && <p className="text-red-600 text-sm mt-1 text-right">{errors.item_name}</p>}
@@ -943,18 +962,59 @@ function BillItemForm({ onCancel, onSave, showMsg, availableItems, cartItems = [
             <label className="block text-sm font-bold text-gray-700 mb-2 text-right">
               اکائی <span className="text-red-500">*</span>
             </label>
-            <select
-              value={formData.requested_unit}
-              onChange={(e) => handleFieldChange("requested_unit", e.target.value)}
-              disabled={!itemExists}
-              style={{ lineHeight: "normal", height: "auto" }}
-              className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.requested_unit ? "border-red-500" :
-                "border-gray-200 focus:border-green-500"
-                } ${!itemExists ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
-            >
-              <option value="">منتخب کریں</option>
-              {ALLOWED_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
+
+            {!useCustomUnit && matchingItem && ALLOWED_UNITS.includes(matchingItem.item_unit) ? (
+              // Show select dropdown for standard units
+              <select
+                value={formData.requested_unit}
+                onChange={(e) => {
+                  setUseCustomUnit(false);
+                  handleFieldChange("requested_unit", e.target.value);
+                }}
+                disabled={!itemExists}
+                style={{ lineHeight: "normal", height: "auto" }}
+                className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.requested_unit ? "border-red-500" :
+                  "border-gray-200 focus:border-green-500"
+                  } ${!itemExists ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
+              >
+                <option value="">منتخب کریں</option>
+                {ALLOWED_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            ) : (
+              // Show text input for custom unit
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={useCustomUnit ? formData.custom_unit : (matchingItem?.item_unit || "")}
+                  onChange={(e) => {
+                    setUseCustomUnit(true);
+                    handleFieldChange("custom_unit", e.target.value);
+                  }}
+                  disabled={!itemExists}
+                  style={{ lineHeight: "normal", height: "auto" }}
+                  className={`w-full p-3 border-2 rounded-xl outline-none text-right text-base ${errors.requested_unit ? "border-red-500" :
+                    "border-gray-200 focus:border-green-500"
+                    } ${!itemExists ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
+                  placeholder="اپنی اکائی لکھیں (مثال: گٹھلی، جوڑی، تھیلی)"
+                />
+                {itemExists && ALLOWED_UNITS.includes(matchingItem?.item_unit) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseCustomUnit(false);
+                      setFormData(prev => ({ ...prev, custom_unit: "", requested_unit: matchingItem?.item_unit || "" }));
+                    }}
+                    className="text-sm text-green-600 hover:text-green-700 text-right block w-full"
+                  >
+                    ↺ معیاری اکائی "{matchingItem?.item_unit}" استعمال کریں
+                  </button>
+                )}
+                {itemExists && !ALLOWED_UNITS.includes(matchingItem?.item_unit) && (
+                  <p className="text-blue-600 text-xs mt-1 text-right">💡 آپ یہاں اپنی مرضی کی کوئی بھی اکائی لکھ سکتے ہیں</p>
+                )}
+              </div>
+            )}
+
             {errors.requested_unit && <p className="text-red-600 text-sm mt-1 text-right">{errors.requested_unit}</p>}
           </div>
         </div>
