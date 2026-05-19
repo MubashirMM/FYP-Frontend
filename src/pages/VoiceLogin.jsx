@@ -32,28 +32,41 @@ function VoiceLogin() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim()) {
       setError("ای میل درج کرنا ضروری ہے");
+      setSuccessMessage("");
       return false;
     }
     if (!emailRegex.test(email)) {
       setError("درست ای میل ایڈریس درج کریں");
+      setSuccessMessage("");
       return false;
     }
     return true;
   };
 
   async function toggleRecording() {
+    // Clear all messages before starting/stopping recording
+    setError("");
+    setSuccessMessage("");
+    setMessage("");
     if (isRecording) stopRecording();
     else await startRecording();
   }
 
   async function startRecording() {
     try {
-      setError(""); setMessage(""); setSuccessMessage("");
+      setError("");
+      setSuccessMessage("");
+      setMessage("");
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       mediaRecorderRef.current = new MediaRecorder(stream);
       chunksRef.current = [];
-      mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
       mediaRecorderRef.current.onstop = async () => {
         try {
           const blob = new Blob(chunksRef.current);
@@ -63,18 +76,25 @@ function VoiceLogin() {
           const audioEl = document.getElementById("audioLogin");
           if (audioEl) audioEl.src = URL.createObjectURL(wavBlob);
           setMessage("✅ آواز ریکارڈ ہو گئی۔ اب آپ لاگ ان کر سکتے ہیں");
+          setError("");
+          setSuccessMessage("");
           setIsRecording(false);
           stream.getTracks().forEach(track => track.stop());
         } catch {
           setError("ریکارڈنگ محفوظ کرنے میں دشواری پیش آئی");
+          setSuccessMessage("");
+          setMessage("");
           setIsRecording(false);
         }
       };
+
       mediaRecorderRef.current.start();
       setIsRecording(true);
       setMessage("🔴 آواز ریکارڈ ہو رہی ہے...");
     } catch {
       setError("مائیکروفون تک رسائی حاصل نہیں ہو سکی");
+      setSuccessMessage("");
+      setMessage("");
     }
   }
 
@@ -85,16 +105,25 @@ function VoiceLogin() {
   async function uploadFile(e) {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Clear all messages before upload
+    setError("");
+    setSuccessMessage("");
+    setMessage("📁 فائل اپ لوڈ کی جا رہی ہے...");
+
     try {
-      setMessage("📁 فائل اپ لوڈ کی جا رہی ہے...");
       const wavBlob = await convertToWav(file);
       const base64 = await blobToBase64(wavBlob);
       setLoginSample(base64);
       const audioEl = document.getElementById("audioLogin");
       if (audioEl) audioEl.src = URL.createObjectURL(wavBlob);
-      setMessage("✅ فائل تیار ہے");
+      setMessage("✅ فائل تیار ہے۔ اب آپ لاگ ان کر سکتے ہیں");
+      setError("");
+      setSuccessMessage("");
     } catch {
       setError("فائل اپ لوڈ کرنے میں مسئلہ پیش آئی");
+      setSuccessMessage("");
+      setMessage("");
     }
   }
 
@@ -137,26 +166,67 @@ function VoiceLogin() {
   }
 
   async function sendLogin() {
+    // Clear email validation first
     if (!validateEmail()) return;
-    if (!loginSample) { setError("⚠️ پہلے اپنی آواز ریکارڈ کریں"); return; }
+
+    // Check if voice sample exists
+    if (!loginSample) {
+      setError("⚠️ پہلے اپنی آواز ریکارڈ کریں");
+      setSuccessMessage("");
+      setMessage("");
+      return;
+    }
+
+    // Clear all messages before login attempt
     setIsLoading(true);
+    setError("");
+    setSuccessMessage("");
+    setMessage("");
+
     try {
       const res = await fetch(`${API}/auth/voice-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, audio_base64: loginSample })
       });
+
       const data = await res.json();
+
       if (!res.ok) {
-        setError(res.status === 404 ? "آپ کی وائس پروفائل نہیں ملی" : data.detail || "لاگ ان میں ناکامی");
-        setIsLoading(false); return;
+        // Handle different error status codes
+        let errorText = "لاگ ان میں ناکامی";
+        if (res.status === 404) {
+          errorText = "آپ کی وائس پروفائل نہیں ملی";
+        } else if (res.status === 401) {
+          errorText = data.detail || "آواز مماثل نہیں ہے۔ براہ کرم دوبارہ کوشش کریں";
+        } else if (res.status === 400) {
+          errorText = data.detail || "وائس رجسٹرڈ نہیں ہے۔ پہلے وائس رجسٹر کریں";
+        } else {
+          errorText = data.detail || "لاگ ان میں ناکامی";
+        }
+
+        setError(errorText);
+        setSuccessMessage("");
+        setIsLoading(false);
+        return;
       }
+
+      // Success - clear error and set success message
       localStorage.setItem("token", data.access_token);
-      setSuccessMessage("✅ وائس لاگ ان کامیاب!");
+      setError("");
+      setSuccessMessage("✅ لاگ ان کامیاب! آئٹمز کی فہرست پر جا رہے ہیں...");
+      setMessage("");
+
+      // Redirect after 1.5 seconds
       setTimeout(() => navigate("/items"), 1500);
-    } catch {
-      setError("سرور سے رابطہ منقطع ہے");
-    } finally { setIsLoading(false); }
+
+    } catch (err) {
+      setError("سرور سے رابطہ منقطع ہے۔ انٹرنیٹ چیک کریں");
+      setSuccessMessage("");
+      setMessage("");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -168,11 +238,28 @@ function VoiceLogin() {
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-6 font-urdu">وائس لاگ ان</h2>
 
           <div className="space-y-5">
-            {error && <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-right font-urdu text-sm">{error}</div>}
-            {successMessage && <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-right font-urdu text-sm animate-pulse">{successMessage}</div>}
-            {message && !error && !successMessage && <div className="p-3 bg-blue-50 border border-blue-400 text-blue-700 rounded-lg text-right font-urdu text-sm">{message}</div>}
+            {/* Error Message - Red */}
+            {error && (
+              <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-right font-urdu text-sm">
+                {error}
+              </div>
+            )}
 
-            {/* Email Field - cursor will be on left for typing */}
+            {/* Success Message - Green (only shows when no error) */}
+            {successMessage && !error && (
+              <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-right font-urdu text-sm animate-pulse">
+                {successMessage}
+              </div>
+            )}
+
+            {/* Info Message - Blue (only shows when no error and no success) */}
+            {message && !error && !successMessage && (
+              <div className="p-3 bg-blue-50 border border-blue-400 text-blue-700 rounded-lg text-right font-urdu text-sm">
+                {message}
+              </div>
+            )}
+
+            {/* Email Field */}
             <div>
               <input
                 type="email"
@@ -184,39 +271,45 @@ function VoiceLogin() {
               />
             </div>
 
-           {/* Recording UI */}
-<div className="bg-gray-50 rounded-xl p-5 flex flex-col items-center space-y-4 border border-gray-200">
-  <div className="flex items-center">
-    <span className="text-gray-700 font-urdu text-sm ml-3 pr-2">
-      {isRecording ? "ریکارڈنگ ہو رہی ہے... روکنے کے لیے کلک کریں" : "ریکارڈ کرنے کے لیے کلک کریں"}
-    </span>
-    <button
-      type="button"
-      onClick={toggleRecording}
-      className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
-        isRecording ? "bg-red-500 animate-pulse scale-110" : "bg-purple-600 hover:bg-purple-700"
-      }`}
-    >
-      {isRecording ? <div className="w-5 h-5 bg-white rounded-sm"></div> : <span className="text-2xl text-white">🎙️</span>}
-    </button>
-  </div>
-  
-  <audio id="audioLogin" controls className="w-full h-10 rounded" />
-  
-  <div className="w-full">
-    <input type="file" accept="audio/*" onChange={uploadFile} className="hidden" id="voice-file" />
-    <label htmlFor="voice-file" className="block w-full text-center py-2 bg-white border border-gray-300 rounded-lg text-sm font-urdu text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors">
-      📁 یا آواز کی فائل اپ لوڈ کریں
-    </label>
-  </div>
-</div>
+            {/* Recording UI */}
+            <div className="bg-gray-50 rounded-xl p-5 flex flex-col items-center space-y-4 border border-gray-200">
+              <div className="flex items-center">
+                <span className="text-gray-700 font-urdu text-sm ml-3 pr-2">
+                  {isRecording ? "ریکارڈنگ ہو رہی ہے... روکنے کے لیے کلک کریں" : "ریکارڈ کرنے کے لیے کلک کریں"}
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleRecording}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${isRecording ? "bg-red-500 animate-pulse scale-110" : "bg-purple-600 hover:bg-purple-700"
+                    }`}
+                >
+                  {isRecording ? <div className="w-5 h-5 bg-white rounded-sm"></div> : <span className="text-2xl text-white">🎙️</span>}
+                </button>
+              </div>
+
+              <audio id="audioLogin" controls className="w-full h-10 rounded" />
+
+              <div className="w-full">
+                <input type="file" accept="audio/*" onChange={uploadFile} className="hidden" id="voice-file" />
+                <label htmlFor="voice-file" className="block w-full text-center py-2 bg-white border border-gray-300 rounded-lg text-sm font-urdu text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors">
+                  📁 یا آواز کی فائل اپ لوڈ کریں
+                </label>
+              </div>
+            </div>
 
             <button
               onClick={sendLogin}
               disabled={isLoading}
               className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl font-urdu text-lg font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isLoading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>تصدیق ہو رہی ہے...</span></> : "لاگ ان کریں"}
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>تصدیق ہو رہی ہے...</span>
+                </>
+              ) : (
+                "لاگ ان کریں"
+              )}
             </button>
           </div>
         </div>

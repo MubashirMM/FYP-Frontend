@@ -10,7 +10,7 @@ function ForgotPassword() {
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  
+
   const API = import.meta.env.VITE_API_URL;
   const isAuthenticated = !!localStorage.getItem("token");
 
@@ -30,11 +30,13 @@ function ForgotPassword() {
     return true;
   };
 
+  // ForgotPassword.jsx - Updated handleEmailSubmit
+
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccessMessage("");
-    
+
     if (!validateEmail()) {
       return;
     }
@@ -45,17 +47,23 @@ function ForgotPassword() {
       const res = await axios.post(`${API}/auth/forgot-password`, null, {
         params: { email }
       });
-      
+
+      // Email exists and code sent
       setSuccessMessage(res.data["پیغام"] || "✅ ری سیٹ کوڈ آپ کی ای میل پر بھیج دیا گیا ہے!");
-      
       localStorage.setItem("reset_email", email);
-      
+
       setTimeout(() => {
         navigate("/reset-password-confirm");
       }, 2000);
-      
+
     } catch (err) {
-      setError(err.response?.data?.detail || "ای میل درست نہیں ہے یا رجسٹرڈ نہیں ہے");
+      // Check if email not registered (404 error)
+      if (err.response?.status === 404) {
+        setError("❌ یہ ای میل رجسٹرڈ نہیں ہے۔ براہ کرم پہلے رجسٹر کریں۔");
+      } else {
+        // Other errors
+        setError(err.response?.data?.detail || "کوئی خرابی پیش آگئی۔ براہ کرم دوبارہ کوشش کریں۔");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -69,24 +77,24 @@ function ForgotPassword() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
       <Header isAuthenticated={isAuthenticated} user={null} onLogout={handleLogout} />
-      
+
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         {/* Forgot Password Card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
           <h2 className="text-xl font-bold text-center text-gray-800 mb-3 font-urdu">
             پاس ورڈ ری سیٹ کریں
           </h2>
-          
+
           <p className="text-center text-gray-500 text-xs mb-4 font-urdu">
             اپنا ای میل درج کریں، ہم آپ کو ری سیٹ کوڈ بھیجیں گے
           </p>
-          
+
           {error && (
             <div className="mb-3 p-2 bg-red-100 border border-red-400 text-red-700 rounded-lg text-right text-sm font-urdu">
               ❌ {error}
             </div>
           )}
-          
+
           {successMessage && (
             <div className="mb-3 p-2 bg-green-100 border border-green-400 text-green-700 rounded-lg text-right animate-pulse text-sm font-urdu">
               ✅ {successMessage}
@@ -103,9 +111,9 @@ function ForgotPassword() {
               autoComplete="off"
               className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg text-right font-urdu focus:outline-none focus:border-purple-500 text-sm"
             />
-            
-            <button 
-              type="submit" 
+
+            <button
+              type="submit"
               disabled={isLoading}
               className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-lg font-urdu text-base font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
             >
@@ -128,7 +136,7 @@ function ForgotPassword() {
           </Link>
         </div>
       </main>
-      
+
       <Footer isAuthenticated={isAuthenticated} />
     </div>
   );
